@@ -28,7 +28,7 @@ Some uses of a keylogger are:
   - Uploading logs via FTP
   - Debug mode (printing to console)
 - Privacy and security: 
-  - PGP public-key encryption of logs on-the-fly using [PyCrypto](https://www.dlitz.net/software/pycrypto/) (paste only your public key).
+  - PGP public-key encryption of logs on the fly using [PyCrypto](https://www.dlitz.net/software/pycrypto/) (paste only your public key).
 - Variable logging frequency (by default once every 100 new characters).
 - Persistence:
   - Adding to Windows Startup.
@@ -67,7 +67,7 @@ Feel free to contribute to fix any problems, or to submit an issue!
 
 
 ### Notes
-Cyrillic layout is implemented, meaning support for there languages: Russian, Russian - Moldava, Azeri, Belarusian, Kazakh, Kyrgyz, Mongolian, Tajik, Tatar, Serbian, Ukrainian, Uzbek. 
+Cyrillic layout is implemented, meaning support for these languages: Russian, Russian - Moldava, Azeri, Belarusian, Kazakh, Kyrgyz, Mongolian, Tajik, Tatar, Serbian, Ukrainian, Uzbek. 
 
 Please note, this repo is for educational purposes only. No contributors, major or minor, are responsible for any actions done by this program.
 
