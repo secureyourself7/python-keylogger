@@ -3,6 +3,16 @@
 NOTE: This project should be used for authorized testing or educational purposes only. 
 You are free to copy, modify and reuse the source code at your own risk. 
 
+### Uses
+
+Some uses of a keylogger are:
+- Security Testing: improving the protection against hidden key loggers
+- Business Administration: Monitor what employees are doing (with their consent)
+- School/Institutions: Track keystrokes and log banned words in a file.
+- Personal Control and File Backup: Make sure no one is using your computer when you are away.
+- Parental Control: Track what your children are doing.
+- Self analysis
+
 ### Features
 - Automatic keyboard layout detection (Windows only at the moment)
 - Latin and non-latin keyboard support: 
@@ -31,7 +41,7 @@ You are free to copy, modify and reuse the source code at your own risk.
 1. `pip install requirements.txt` (alternatively `python -m pip ...`)
 1. `python logger_main.py local encrypt startup`
 
-##### General usage
+##### Arguments
 `logger_main.py mode [encrypt] [startup]`
 - **modes**:
   - **local:** store the logs in a file [keylogs.txt]    
@@ -48,3 +58,10 @@ https://www.youtube.com/watch?v=8BiOPBsXh0g
 
 ### Known issues
 - See keyboard docs: https://github.com/boppreh/keyboard#known-limitations. 
+Feel free to contribute to fix any problems, or to submit an issue!
+
+Please note, this repo is for educational purposes only. No contributors, major or minor, are responsible for any actions done by this program.
+
+Don't really understand licenses or tl;dr? Check out the [MIT license summary](https://tldrlegal.com/license/mit-license).
+
+Distributed under the MIT license. See [LICENSE](https://github.com/secureyouself7/python-keylogger/blob/master/LICENSE.txt) for more information.
