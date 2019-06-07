@@ -60,6 +60,8 @@ https://www.youtube.com/watch?v=8BiOPBsXh0g
 - See keyboard docs: https://github.com/boppreh/keyboard#known-limitations. 
 Feel free to contribute to fix any problems, or to submit an issue!
 
+
+### Notes
 Please note, this repo is for educational purposes only. No contributors, major or minor, are responsible for any actions done by this program.
 
 Don't really understand licenses or tl;dr? Check out the [MIT license summary](https://tldrlegal.com/license/mit-license).
