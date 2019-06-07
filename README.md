@@ -14,17 +14,18 @@ Some uses of a keylogger are:
 - Self analysis
 
 ### Features
-- Automatic keyboard layout detection (Windows only at the moment)
-- Latin and non-latin keyboard support: 
-  - Cyrillic layout is implemented, meaning support for there languages: Russian, Russian - Moldava, Azeri, Belarusian, Kazakh, Kyrgyz, Mongolian, Tajik, Tatar, Serbian, Ukrainian, Uzbek. 
-- Full upper- and lowercase detection (capslock + shift)
 - Modes:
   - Store logs locally
   - Send logs to Google Forms
   - Email logs
   - Upload logs via FTP
+- Automatic keyboard layout detection (Windows only at the moment)
+- Latin and non-latin keyboard support: 
+  - Cyrillic layout is implemented, meaning support for there languages: Russian, Russian - Moldava, Azeri, Belarusian, Kazakh, Kyrgyz, Mongolian, Tajik, Tatar, Serbian, Ukrainian, Uzbek. 
+- PGP public-key encryption of logs (paste your public key, keep your private key secret)
 - Logging window titles and current time where appropriate
-- PGP public-key encryption of logs
+- Backspace support (until the active window is changed)
+- Full upper- and lowercase detection (capslock + shift)
 - Persistence:
   - Adding to Windows Startup
   - Every 10 seconds making sure that a keylogger process is running 
