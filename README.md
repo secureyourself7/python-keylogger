@@ -11,7 +11,7 @@ Some uses of a keylogger are:
 - School/Institutions: Track keystrokes and log banned words in a file.
 - Personal Control and File Backup: Make sure no one is using your computer when you are away.
 - Parental Control: Track what your children are doing.
-- Self analysis
+- Self-analysis and assessment.
 
 ### Features
 - Global event hook on all keyboards (captures keys regardless of focus) using [Keyboard](https://github.com/boppreh/keyboard)
@@ -46,10 +46,10 @@ Some uses of a keylogger are:
 1. `pip install requirements.txt` (alternatively `python -m pip ...`)
 1. `python logger_main.py local encrypt startup`
 
-##### Arguments
+##### System arguments
 `logger_main.py mode [encrypt] [startup]`
 - **modes**:
-  - **local:** store the logs in a file [keylogs.txt]    
+  - **local:** store the logs in a file (e.g. 2019-Jan-01.txt)
   - **remote:** send the logs to a Google Form. You must specify the Form URL and Field Name in the script.
   - **email:** send the logs to an email. You must specify (SERVER, PORT, USERNAME, PASSWORD, TO)
   - **ftp:** upload logs file to an FTP account. You must specify (SERVER, USERNAME, PASSWORD, SSL (1 to enable, or 0), OUTPUT DIRECTORY)
