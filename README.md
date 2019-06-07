@@ -14,26 +14,30 @@ Some uses of a keylogger are:
 - Self analysis
 
 ### Features
-- Modes:
-  - Store logs locally
-  - Send logs to Google Forms
-  - Email logs
-  - Upload logs via FTP
-- Automatic keyboard layout detection (Windows only at the moment)
-- Latin and non-latin keyboard support: 
-  - Cyrillic layout is implemented, meaning support for there languages: Russian, Russian - Moldava, Azeri, Belarusian, Kazakh, Kyrgyz, Mongolian, Tajik, Tatar, Serbian, Ukrainian, Uzbek. 
-- PGP public-key encryption of logs (paste your public key, keep your private key secret)
-- Logging window titles and current time where appropriate
-- Backspace support (until the active window is changed)
-- Full upper- and lowercase detection (capslock + shift)
+- Global event hook on all keyboards (captures keys regardless of focus) using [Keyboard](https://github.com/boppreh/keyboard)
+- Pure Python, no C modules to be compiled.
+- Human-readability:
+  - Logging keys as they actually are in your layout. Cyrillic keyboard layout is fully implemented. 
+  - Logging window titles and current time where appropriate.
+  - Backspace support (until the active window is changed).
+  - Full upper- and lowercase detection (capslock + shift).
+- Variety of logging modes:
+  - Storing logs locally
+  - Sending logs to Google Forms
+  - Sending logs via email
+  - Uploading logs via FTP
+  - Debug mode (printing to console)
+- Privacy and security: 
+  - PGP public-key encryption of logs on-the-fly using [PyCrypto](https://www.dlitz.net/software/pycrypto/) (paste only your public key).
+- Variable logging frequency (by default once every 100 new characters).
 - Persistence:
-  - Adding to Windows Startup
-  - Every 10 seconds making sure that a keylogger process is running 
+  - Adding to Windows Startup.
+  - Every 10 seconds making sure that a keylogger process is running.
 
 ### Getting started
 
 #### System requirements
-- MS Windows (tested on 10). TBD: add Linux (a few lines of code).
+- MS Windows (tested on 10). TBD: add Linux and macOS.
 - Python 3.7+: https://www.python.org/downloads/
 
 #### Usage
@@ -50,19 +54,21 @@ Some uses of a keylogger are:
   - **email:** send the logs to an email. You must specify (SERVER, PORT, USERNAME, PASSWORD, TO)
   - **ftp:** upload logs file to an FTP account. You must specify (SERVER, USERNAME, PASSWORD, SSL (1 to enable, or 0), OUTPUT DIRECTORY)
 - **[optional]**
-  - **encrypt:** encrypt the logs on-the-fly with a public key provided in logger.py.
-  - **startup:** add the keylogger to windows startup.
+  - **encrypt:** enable the encryption of logs with a public key provided in logger.py.
+  - **startup:** add the keylogger to Windows startup.
 
 ### Video tutorials (similar but simpler projects)
 https://www.youtube.com/watch?v=uODkiVbuR-g
 https://www.youtube.com/watch?v=8BiOPBsXh0g
 
 ### Known issues
-- See keyboard docs: https://github.com/boppreh/keyboard#known-limitations. 
+- See [Keyboard: Known limitations](https://github.com/boppreh/keyboard#known-limitations). 
 Feel free to contribute to fix any problems, or to submit an issue!
 
 
 ### Notes
+Cyrillic layout is implemented, meaning support for there languages: Russian, Russian - Moldava, Azeri, Belarusian, Kazakh, Kyrgyz, Mongolian, Tajik, Tatar, Serbian, Ukrainian, Uzbek. 
+
 Please note, this repo is for educational purposes only. No contributors, major or minor, are responsible for any actions done by this program.
 
 Don't really understand licenses or tl;dr? Check out the [MIT license summary](https://tldrlegal.com/license/mit-license).
