@@ -54,7 +54,7 @@ Some uses of a keylogger are:
 ##### System arguments
 `logger_main.py mode [encrypt] [startup]`
 - **modes**:
-  - **local:** store the logs in a file (e.g. 2019-Jan-01.txt)
+  - **local:** store the logs in a local txt file. Filename is a MD5 hash of the current date (YYYY-Mon-DD).
   - **remote:** send the logs to a Google Form. You must specify the Form URL and Field Name in the script.
   - **email:** send the logs to an email. You must specify (SERVER, PORT, USERNAME, PASSWORD, TO)
   - **ftp:** upload logs file to an FTP account. You must specify (SERVER, USERNAME, PASSWORD, SSL (1 to enable, or 0), OUTPUT DIRECTORY)
