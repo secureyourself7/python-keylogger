@@ -17,7 +17,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Hash import SHA3_512
 import base64
-import getpass             # for securely getting the user's passphrase to access the private key.
+import getpass             # for securely entering a user's pass phrase to access the private key
 import hashlib             # for hashing the names of files
 
 # CONSTANTS
