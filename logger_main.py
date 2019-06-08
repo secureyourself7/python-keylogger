@@ -41,7 +41,7 @@ def msg():
     print(
     """\n \nPython Keylogger for Windows
 
-USAGE: logger_main.py mode [startup] [encrypt]
+USAGE: logger_main.py mode [exe] [encrypt] [startup]
 
 mode:
      local: store the logs in a file [current_date.txt]
@@ -52,11 +52,11 @@ mode:
 
      ftp: upload logs file to an FTP account. You must specify (SERVER,USERNAME,PASSWORD,SSL OPTION,OUTPUT DIRECTORY).
 
-[optional] startup: add the keylogger to windows startup.
+[optional] exe: provide this argument if you are running an executable.
 
 [optional] encrypt: encrypt the logs with a public key provided in logger.py.
 
-[optional] exe: provide this argument if you are running an executable.\n\n""")
+[optional] startup: add the keylogger to windows startup. \n\n""")
     return True
 
 
