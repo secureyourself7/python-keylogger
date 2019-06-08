@@ -13,23 +13,23 @@ Some uses of a keylogger are:
 - Self-analysis and assessment.
 
 ### Features
-1. Global event hook on all (even On-Screen) keyboards using [Keyboard](https://github.com/boppreh/keyboard).
-1. Pure Python, no C modules to be compiled.
-1. Human-readability of logs:
+- Global event hook on all (even On-Screen) keyboards using [Keyboard](https://github.com/boppreh/keyboard).
+- Pure Python, no C modules to be compiled.
+- Human-readability of logs:
   - Logging keys as they actually are in your layout; cyrillic keyboard layout is fully implemented;
   - Logging window titles and current time where appropriate;
   - Backspace support (until the active window is changed);
   - Full upper-/ lowercase detection (capslock + shift keys).
-1. Variety of logging modes:
+- Variety of logging modes:
   - Storing logs locally;
   - Sending logs to Google Forms;
   - Sending logs via email;
   - Uploading logs via FTP;
   - Debug mode (printing to console).
-1. Privacy protection:
+- Privacy protection:
   - RSA public-key encryption of logs on the fly using [PyCrypto](https://www.dlitz.net/software/pycrypto/).
-1. Variable logging frequency (by default once every 100 new characters).
-1. Persistence:
+- Variable logging frequency (by default once every 100 new characters).
+- Persistence:
   - Adding to Windows Startup;
   - Every 10 seconds making sure that a keylogger process is running.
 
