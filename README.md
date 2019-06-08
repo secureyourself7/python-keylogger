@@ -37,7 +37,7 @@ Some uses of a keylogger are:
 
 #### System requirements
 - MS Windows (tested on 10). TODO: add Linux and macOS support;
-- [Python 3.7](https://www.python.org/downloads/)
+- [Python 3](https://www.python.org/downloads/) (tested on v. 3.7.3).
 
 #### Usage
 
