@@ -49,19 +49,19 @@ Some uses of a keylogger are:
 1. `pip install pyinstaller`
 1. `pyinstaller --onefile logger_main.py`
 1. `pyinstaller --onefile logger.py`
-1. `"dist\logger_main.exe" exe local encrypt startup`
+1. `"dist\logger_main.exe" local exe encrypt startup`
 
 ##### System arguments
-`logger_main.py mode [encrypt] [startup]`
+`logger_main.py mode [exe] [encrypt] [startup]`
 - **modes**:
   - **local:** store the logs in a local txt file. Filename is a MD5 hash of the current date (YYYY-Mon-DD).
   - **remote:** send the logs to a Google Form. You must specify the Form URL and Field Name in the script.
   - **email:** send the logs to an email. You must specify (SERVER, PORT, USERNAME, PASSWORD, TO)
   - **ftp:** upload logs file to an FTP account. You must specify (SERVER, USERNAME, PASSWORD, SSL (1 to enable, or 0), OUTPUT DIRECTORY)
 - **[optional]**
+  - **exe**: provide this argument if you are running an executable.
   - **encrypt:** enable the encryption of logs with a public key provided in logger.py.
   - **startup:** add the keylogger to Windows startup.
-  - **exe**: provide this argument if you are running an executable.
 
 ### Video tutorials (similar but simpler projects)
 https://www.youtube.com/watch?v=uODkiVbuR-g
