@@ -216,7 +216,10 @@ def detect_key_layout():
     lid = klid & (2 ** 16 - 1)
     # Convert language ID from decimal to hexadecimal
     lid_hex = hex(lid)
-    language = lcid_dict[str(lid_hex)]
+    try:
+        language = lcid_dict[str(lid_hex)]
+    except KeyError:
+        language = lcid_dict['0x409']  # English - United States
     return language
 
 
