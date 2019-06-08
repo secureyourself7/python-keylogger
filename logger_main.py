@@ -56,7 +56,7 @@ mode:
 
 [optional] encrypt: encrypt the logs with a public key provided in logger.py.
 
-[optional] exe: provide this argument before compiling the script into executable using pyinstaller.\n\n""")
+[optional] exe: provide this argument if you are running an executable.\n\n""")
     return True
 
 
