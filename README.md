@@ -49,7 +49,7 @@ Some uses of a keylogger are:
 1. `pip install pyinstaller`
 1. `pyinstaller --onefile logger_main.py`
 1. `pyinstaller --onefile logger.py`
-1. `"dist\logger_main.exe" local encrypt startup`
+1. `"dist\logger_main.exe" exe local encrypt startup`
 
 ##### System arguments
 `logger_main.py mode [encrypt] [startup]`
