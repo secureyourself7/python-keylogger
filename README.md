@@ -61,6 +61,7 @@ Some uses of a keylogger are:
 - **[optional]**
   - **encrypt:** enable the encryption of logs with a public key provided in logger.py.
   - **startup:** add the keylogger to Windows startup.
+  - **exe**: provide this argument if you are running an executable.
 
 ### Video tutorials (similar but simpler projects)
 https://www.youtube.com/watch?v=uODkiVbuR-g
