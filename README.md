@@ -4,40 +4,39 @@ NOTE: This project should be used for authorized testing or educational purposes
 You are free to copy, modify and reuse the source code at your own risk. 
 
 ### Uses
-
 Some uses of a keylogger are:
-- Security Testing: improving the protection against hidden key loggers
-- Business Administration: Monitor what employees are doing (with their consent)
-- School/Institutions: Track keystrokes and log banned words in a file.
-- Personal Control and File Backup: Make sure no one is using your computer when you are away.
-- Parental Control: Track what your children are doing.
+- Security Testing: improving the protection against hidden key loggers;
+- Business Administration: Monitor what employees are doing (with their consent);
+- School/Institutions: Track keystrokes and log banned words in a file;
+- Personal Control and File Backup: Make sure no one is using your computer when you are away;
+- Parental Control: Track what your children are doing;
 - Self-analysis and assessment.
 
 ### Features
-- Global event hook on all (even On-Screen) keyboards using [Keyboard](https://github.com/boppreh/keyboard)
-- Pure Python, no C modules to be compiled.
-- Human-readability of logs:
-  - Logging keys as they actually are in your layout. Cyrillic keyboard layout is fully implemented. 
-  - Logging window titles and current time where appropriate.
-  - Backspace support (until the active window is changed).
-  - Full upper- and lowercase detection (capslock + shift).
-- Variety of logging modes:
-  - Storing logs locally
-  - Sending logs to Google Forms
-  - Sending logs via email
-  - Uploading logs via FTP
-  - Debug mode (printing to console)
-- Privacy and security: 
+1. Global event hook on all (even On-Screen) keyboards using [Keyboard](https://github.com/boppreh/keyboard).
+1. Pure Python, no C modules to be compiled.
+1. Human-readability of logs:
+  - Logging keys as they actually are in your layout; cyrillic keyboard layout is fully implemented;
+  - Logging window titles and current time where appropriate;
+  - Backspace support (until the active window is changed);
+  - Full upper-/ lowercase detection (capslock + shift keys).
+1. Variety of logging modes:
+  - Storing logs locally;
+  - Sending logs to Google Forms;
+  - Sending logs via email;
+  - Uploading logs via FTP;
+  - Debug mode (printing to console).
+1. Privacy protection:
   - RSA public-key encryption of logs on the fly using [PyCrypto](https://www.dlitz.net/software/pycrypto/).
-- Variable logging frequency (by default once every 100 new characters).
-- Persistence:
-  - Adding to Windows Startup.
+1. Variable logging frequency (by default once every 100 new characters).
+1. Persistence:
+  - Adding to Windows Startup;
   - Every 10 seconds making sure that a keylogger process is running.
 
 ### Getting started
 
 #### System requirements
-- MS Windows (tested on 10). TBD: add Linux and macOS.
+- MS Windows (tested on 10). TODO: add Linux and macOS support;
 - Python 3.7+: https://www.python.org/downloads/
 
 #### Usage
@@ -75,7 +74,7 @@ Feel free to contribute to fix any problems, or to submit an issue!
 ### Notes
 Cyrillic layout is implemented, meaning support for these languages: Russian, Russian - Moldava, Azeri, Belarusian, Kazakh, Kyrgyz, Mongolian, Tajik, Tatar, Serbian, Ukrainian, Uzbek. 
 
-Please note, this repo is for educational purposes only. No contributors, major or minor, are responsible for any actions done by this program.
+Please note that this repo is for educational purposes only. No contributors, major or minor, are responsible for any actions made by the software.
 
 Don't really understand licenses or tl;dr? Check out the [MIT license summary](https://tldrlegal.com/license/mit-license).
 
