@@ -46,6 +46,7 @@ Some uses of a keylogger are:
 1. `pip install requirements.txt` (alternatively `python -m pip ...`)
 1. `python logger_main.py local encrypt startup`
 ###### **Run as an executable**
+1. `pip install pyinstaller`
 1. `pyinstaller --onefile logger_main.py`
 1. `pyinstaller --onefile logger.py`
 1. `"dist\logger_main.exe" local encrypt startup`
