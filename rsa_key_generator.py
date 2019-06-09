@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os                  # for handling paths and removing files (FTP mode)
+import os                  # for handling paths
 import sys                 # for getting sys.argv
 from Crypto.PublicKey import RSA
 import getpass             # for securely entering a user's pass phrase to access the private key
