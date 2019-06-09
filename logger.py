@@ -37,18 +37,18 @@ count, backspace_buffer_len = 0, 0
 
 # RSA KEYS FOR ENCRYPTION. Use the commands at the bottom of this script to generate a new key pair.
 public_key_str = """-----BEGIN PUBLIC KEY-----
-MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAt3bksLIIV7w2WPcVLMPH
-l+dL6wMxSMiwxiK2a/wk2Ba0aQCpOZyPaJSAXbCl0kPU7NL9qBoBpKOD27MKl65m
-BTIT45SDcUjJVUvHvueEIPmRhATQFEDE1id2OexNk7TWpm3us8KQUlPrUeviEMNN
-jI4/z5lNcD6/YTjEZx+iQ3ERO5yyQJ1KX5GwFI91RfRPsSuswU3U7K7X1yM4KhHL
-gafblBfh9GR3VEUv5g/DtKjiViVpcpV4hxzShq2or+QvzCngBk+ZPJg8+jH3PFgT
-VBKf3WDs7x0fLco81wdqj3fIlTPAM29jtllvRIM7kvYVZVTI/sn8CckX158Dtim7
-Hv5i3T4zGcONpRVn/9VK8NrIZyAvaDsQyTc7J0zdUY6tj3fTZXYvyWj9gBAh0leL
-99f9CQR+rWd8E2ifrHdJ+ogn31UkXw7jfLvDWrOcThK+ZILK5Z9QCe9ZXJ9RzjSZ
-oE9HAYRvBgbRASRvs4+lq37kLy+oJGunpp5tu5pBy2lS+eLEtRjYs86JPZ+rsEOw
-2cPy5dCoowMxZnSXDJibBoa2uCXRrwupNZLtZ1jH6EdVdEqcyKjp9YUDkWn1tU1w
-n8YpjZ0pK5rEUEubmjPSBzupYjj/eTuZONrED2mhcojPZX75UjQzsnWRLgfjSeec
-4ireBJiz//vwQHVs2ZFSo18CAwEAAQ==
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAshIomaK50npZ8k3nv9Rb
+y0LmfLALNxxaGZYBY2R1LQTPsQMyMOTjkx6frLdTHuZDI1HC6fE3ns8gQMP8sbjp
+lpeGS++BQ8d9j9JBOEd4pzRaOqUZUS3PnJMeflAv4rbemVw3mU7ff0Z5HLbjLKqq
+7hfQRetp658wKauqW14yiTv50rVT6mWLxEuNUf1tMitZEnGMp/agot88VZuyMHEp
+RukTsUGYcI/ZV2G1aSj5I8bgzf1IG2LKqqz5xhVO9J+8VkdlCtJsJtqIdMhMk+lq
+m701AkrxUW9eERPVfJSZnCUldIf00p8FM9o2CXIULv2NXvpiqws7vV5yYqe+/oVS
+kkUQBMhbjKQ9vRB3CsbKrozQDQIvSIsRx0LMtwBcsmeIxYUtUcC4OAG8wwExBkwu
+oXfeuCajz/La/5/WSnimgjr8r75QZKci0/gDFascwKoxtKiq2BVEL/AcLBTt0QSP
+rBudiv162g3Gs3U25yXt+3NG0wY4FFepyNuVsrhwHbQ48qGppBJg2MAhKnHfPoBU
+wmyRcIBxwawTTHOudv7dTQlOSD2idJyILRmgro7LOsC8dEGfHASbOPmbeWwNsnQx
+c1NyRH5ZQ4+UGI7cKKyLbQDdTbh5AtU+udd4ZssNEyJ+LaLQA9MHlhSHOempW2aN
+BTNBlFu/+2ZWAb6iA3YYJnECAwEAAQ==
 -----END PUBLIC KEY-----"""
 public_key = bytes(public_key_str, 'utf-8')
 # with open("public_key.pem", "rb") as f:
