@@ -72,6 +72,7 @@ https://www.youtube.com/watch?v=uODkiVbuR-g
 https://www.youtube.com/watch?v=8BiOPBsXh0g
 
 ### Known issues
+- Does not capture passwords auto-typed by KeePassXC.
 - See [Keyboard: Known limitations](https://github.com/boppreh/keyboard#known-limitations). 
 Feel free to contribute to fix any problems, or to submit an issue!
 
