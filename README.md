@@ -52,7 +52,7 @@ Some uses of a keylogger are:
 1. `"dist\logger_main.exe" local exe encrypt startup`
 ###### **To use RSA encryption/decryption (optional)**
 1. Generate RSA key pair (optional): `python rsa_key_generator.py`.
-1. Change the public key filename in logger.py.
+1. Change the public key filename / paste the key in logger.py.
 1. To decrypt logs use `python decrytor.py`.
 
 ##### System arguments
