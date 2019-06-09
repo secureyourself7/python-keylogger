@@ -32,9 +32,9 @@ def decrypt_many(encrypted_log, private_key, passphrase=None):
         passphrase = None
     delimiter = '---END---'
     if isinstance(encrypted_log, bytes):
-        encr_log_str = encrypted_log.decode('utf-8')
+        encrypted_log = encrypted_log.decode('utf-8')
     # remove the line breaks and ---START---
-    encr_log_str2 = encr_log_str.replace('\n', '')
+    encr_log_str2 = encrypted_log.replace('\n', '')
     encr_log_str3 = encr_log_str2.replace('---START---', '')
     encrypted_split = encr_log_str3.split(delimiter)
     # filter the empty elements
@@ -47,7 +47,7 @@ def decrypt_many(encrypted_log, private_key, passphrase=None):
 # READ ENCRYPTED LOGS:
 # RSA KEYS FOR ENCRYPTION
 # private key
-private_key_filename = input("ENTER YOUR PRIVATE KEY FILENAME OR FULL PATH (*.pem):")
+private_key_filename = input("ENTER YOUR PRIVATE KEY FILENAME OR FULL PATH (*.pem):\n")
 try:
     with open(os.path.join(full_path, private_key_filename), "rb") as f:
         private_key = f.read()
@@ -57,6 +57,6 @@ except:
 
 encrypted_log = input("""PASTE YOUR ENCRYPTED LOG/MESSAGE: SHOULD LOOK LIKE THIS:
 ---START---.......---END---
----START---.......---END---""")
-passphrase = getpass.getpass(prompt='Enter your private key passphrase: ')
+---START---.......---END---\n""")
+passphrase = getpass.getpass(prompt='Enter your private key passphrase:\n')
 print('Your decrypted log/message:\n', decrypt_many(encrypted_log, private_key, passphrase))
