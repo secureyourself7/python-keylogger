@@ -41,6 +41,7 @@ Some uses of a keylogger are:
 #### Usage
 
 ##### **Quick start**
+`git clone https://github.com/secureyourself7/python-keylogger`
 ###### **Run as a Python script**
 1. `pip install requirements.txt` (alternatively `python -m pip ...`)
 1. `python logger_main.py local encrypt startup`
