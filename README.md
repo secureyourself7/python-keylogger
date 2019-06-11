@@ -28,7 +28,6 @@ Some uses of a keylogger are:
   - Debug mode (printing to console).
 - Privacy protection:
   - RSA public-key encryption of logs on the fly using [PyCrypto](https://www.dlitz.net/software/pycrypto/).
-- Variable logging frequency (by default once every 100 new characters).
 - Persistence:
   - Adding to Windows Startup;
   - Every 10 seconds making sure that a keylogger process is running.
