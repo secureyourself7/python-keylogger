@@ -20,7 +20,7 @@ Some uses of a keylogger are:
   - Logging window titles and current time where appropriate;
   - Backspace support (until the active window is changed);
   - Full upper-/ lowercase detection (capslock + shift keys).
-- Variety of logging modes:
+- A variety of logging modes:
   - Storing logs locally;
   - Sending logs to Google Forms;
   - Sending logs via email;
