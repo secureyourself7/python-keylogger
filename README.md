@@ -54,7 +54,7 @@ Some uses of a keylogger are:
 ###### **To use RSA encryption/decryption (optional)**
 1. Generate RSA key pair (optional): `python rsa_key_generator.py`.
 1. Change the public key filename / paste the key in logger.py.
-1. To decrypt logs use `python decryptor.py`.
+1. To decrypt logs type `python decryptor.py`, and then follow the instructions given by the script.
 
 ##### System arguments
 `logger_main.py mode [exe] [encrypt] [startup]`
