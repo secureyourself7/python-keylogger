@@ -47,8 +47,8 @@ Some uses of a keylogger are:
 1. `python logger_main.py local encrypt startup`
 ###### **Run as an executable**
 1. `pip install pyinstaller`
-1. `pyinstaller --onefile logger_main.py`
-1. `pyinstaller --onefile logger.py`
+1. `pyinstaller --onefile --noconsole logger_main.py`
+1. `pyinstaller --onefile --noconsole logger.py`
 1. `"dist\logger_main.exe" local exe encrypt startup`
 ###### **To use RSA encryption/decryption (optional)**
 1. Generate RSA key pair (optional): `python rsa_key_generator.py`.
