@@ -15,7 +15,7 @@ Some uses of a keylogger are:
 ### Features
 - Global event hook on all (even On-Screen) keyboards using [Keyboard](https://github.com/boppreh/keyboard).
 - Pure Python, no C modules to be compiled.
-- Human-readability of logs:
+- Human-readable logs:
   - Logging keys as they actually are in your layout; cyrillic keyboard layout is fully implemented;
   - Logging window titles and current time where appropriate;
   - Backspace support (until the active window is changed);
