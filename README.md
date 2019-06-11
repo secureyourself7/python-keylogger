@@ -41,15 +41,16 @@ Some uses of a keylogger are:
 #### Usage
 
 ##### **Quick start**
-`git clone https://github.com/secureyourself7/python-keylogger`
+1. `git clone https://github.com/secureyourself7/python-keylogger`
+2. `cd python-keylogger`
 ###### **Run as a Python script**
-1. `pip install requirements.txt` (alternatively `python -m pip ...`)
-1. `python logger_main.py local encrypt startup`
+3. `pip install requirements.txt` (alternatively `python -m pip ...`)
+4. `python logger_main.py local encrypt startup`
 ###### **Run as an executable**
-1. `pip install pyinstaller`
-1. `pyinstaller --onefile --noconsole logger_main.py`
-1. `pyinstaller --onefile --noconsole logger.py`
-1. `"dist\logger_main.exe" exe local encrypt startup`
+3. `pip install pyinstaller`
+4. `pyinstaller --onefile --noconsole logger_main.py`
+5. `pyinstaller --onefile --noconsole logger.py`
+6. `"dist\logger_main.exe" exe local encrypt startup`
 ###### **To use RSA encryption/decryption (optional)**
 1. Generate RSA key pair (optional): `python rsa_key_generator.py`.
 1. Change the public key filename / paste the key in logger.py.
