@@ -3,7 +3,7 @@
 
 import os                  # for handling paths
 import sys                 # for getting sys.argv
-from Crypto.PublicKey import RSA
+from Cryptodome.PublicKey import RSA
 import getpass             # for securely entering a user's pass phrase to access the private key
 
 # - GLOBAL SCOPE VARIABLES start -
