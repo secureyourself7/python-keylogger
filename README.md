@@ -44,18 +44,18 @@ Some uses of a keylogger are:
 2. `cd python-keylogger`
 ###### **Run as a Python script**
 3. `pip install requirements.txt` (alternatively `python -m pip ...`)
-4. `python "Runtime Broker.py" local encrypt`
+4. `python "Runtime Broker.py"`
 ###### **Run as an executable**
 3. `pip install pyinstaller`
 4. `pyinstaller --onefile --noconsole --icon=icon.ico "Runtime Broker.py"`
-5. `"dist\Runtime Broker.exe" local encrypt exe`
+5. `"dist\Runtime Broker.exe"`
 ###### **To use RSA encryption/decryption (optional)**
 1. Generate RSA key pair (optional): `python rsa_key_generator.py`.
 1. Change the public key filename / paste the key in logger.py.
 1. To decrypt logs type `python decryptor.py`, and then follow the instructions given by the script.
 
 ##### System arguments
-`logger_main.py mode [encrypt] [exe]`
+`logger_main.py mode [encrypt]`
 - **modes**:
   - **local:** store the logs in a local txt file. Filename is a MD5 hash of the current date (YYYY-Mon-DD).
   - **remote:** send the logs to a Google Form. You must specify the Form URL and Field Name in the script.
@@ -63,7 +63,6 @@ Some uses of a keylogger are:
   - **ftp:** upload logs file to an FTP account. You must specify (SERVER, USERNAME, PASSWORD, SSL (1 to enable, or 0), OUTPUT DIRECTORY)
 - **[optional]**
   - **encrypt:** enable the encryption of logs with a public key provided in logger.py.
-  - **exe**: provide this argument if you are running an executable.
 
 ### Video tutorials (similar but simpler projects)
 https://www.youtube.com/watch?v=uODkiVbuR-g
