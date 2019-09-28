@@ -3,6 +3,7 @@
 
 import os                  # for handling paths
 import sys                 # for getting sys.argv and reading multiple line user input
+import time
 import tkinter as tk
 from tkinter.filedialog import askopenfilename
 from Cryptodome.PublicKey import RSA
@@ -73,15 +74,11 @@ with open(encrypted_log_filename, "rb") as f:
     else:
         clear = lambda: os.system('clear')  # on Linux System
     clear()
-    print('messages received\n')
     passphrase = getpass.getpass(prompt='\nEnter your private key passphrase:\n')
     with open(private_key_filename, "rb") as f:
         private_key = f.read()
-        try:
-            decrypted_log = decrypt_many(encrypted_log_str, private_key, passphrase)
-        except TypeError as e:
-            print(e.args[0])
-            exit()
+        print('Decryption started...')
+        decrypted_log = decrypt_many(encrypted_log_str, private_key, passphrase)
     del private_key
 
 # save decrypted log:
@@ -94,3 +91,4 @@ erase = input('Finished! Saved to ' + new_filename + '. \nClear the console outp
 if erase.lower() == 'y':
     clear()
     print('cleared')
+    time.sleep(5)
