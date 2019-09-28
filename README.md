@@ -45,7 +45,7 @@ Some uses of a keylogger are:
 ###### **Run as a Python script**
 3. `pip install requirements.txt` (alternatively `python -m pip ...`)
 4. `python Start.py`
-###### **Run as an executable**
+###### **Run as an executable (7 MB)**
 3. `pip install pyinstaller`
 4. `pyinstaller --onefile --noconsole --icon=icon.ico Start.py`
 5. `dist\Start.exe`
