@@ -27,7 +27,7 @@ Some uses of a keylogger are:
   - Uploading logs via FTP;
   - Debug mode (printing to console).
 - Privacy protection:
-  - RSA public-key encryption of logs on the fly using [PyCryptoDome](https://www.dlitz.net/software/pycrypto/).
+  - RSA public-key encryption of logs on the fly using [PyCryptoDome](https://pycryptodome.readthedocs.io/en/latest/).
 - Persistence:
   - Adding to Windows Startup.
 
