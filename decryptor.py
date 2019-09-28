@@ -3,15 +3,18 @@
 
 import os                  # for handling paths
 import sys                 # for getting sys.argv and reading multiple line user input
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP
-from Crypto.Hash import SHA3_512
+import tkinter as tk
+from tkinter.filedialog import askopenfilename
+from Cryptodome.PublicKey import RSA
+from Cryptodome.Cipher import PKCS1_OAEP
+from Cryptodome.Hash import SHA3_512
 import base64
 import getpass             # for securely entering a user's pass phrase to access the private key
 
 # - GLOBAL SCOPE VARIABLES start -
 
-full_path = os.path.dirname(os.path.realpath(sys.argv[0]))
+module_path = os.path.abspath(__file__)
+dir_path = os.path.dirname(module_path)
 
 # - GLOBAL SCOPE VARIABLES end -
 
@@ -48,35 +51,46 @@ def decrypt_many(encrypted_log, private_key, passphrase=None):
     return decrypted_blob
 
 
-# READ ENCRYPTED LOGS:
-# RSA KEYS FOR ENCRYPTION
-# private key
-private_key_filename = input("ENTER YOUR PRIVATE KEY FILENAME OR FULL PATH (*.pem):\n")
-try:
-    with open(os.path.join(full_path, private_key_filename), "rb") as f:
-        private_key = f.read()
-except:
+# CHOOSE AN ENCRYPTED LOG FILE
+tk.Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
+encrypted_log_filename = askopenfilename(title="CHOOSE YOUR ENCRYPTED LOG FILE",
+                                         filetypes=[("All Files", "*.*")],
+                                         initialdir=dir_path, multiple=False)
+if encrypted_log_filename == "":
+    exit()
+# CHOOSE A PRIVATE KEY FILE
+private_key_filename = askopenfilename(title="CHOOSE YOUR PRIVATE KEY FILE (*.pem)",
+                                       filetypes=[("PEM files", "*.pem")],
+                                       initialdir=dir_path, multiple=False)
+if private_key_filename == "":
+    exit()
+
+# decrypt log
+with open(encrypted_log_filename, "rb") as f:
+    encrypted_log_str = f.read()
+    if os.name == 'nt':
+        clear = lambda: os.system('cls')    # on Windows System
+    else:
+        clear = lambda: os.system('clear')  # on Linux System
+    clear()
+    print('messages received\n')
+    passphrase = getpass.getpass(prompt='\nEnter your private key passphrase:\n')
     with open(private_key_filename, "rb") as f:
         private_key = f.read()
+        try:
+            decrypted_log = decrypt_many(encrypted_log_str, private_key, passphrase)
+        except TypeError as e:
+            print(e.args[0])
+            exit()
+    del private_key
 
-print("""PASTE YOUR ENCRYPTED LOG/MESSAGE AND PRESS CTRL+D or CTRL+Z (for Windows), then ENTER. SHOULD LOOK LIKE THIS:
----START---.......---END---
----START---.......---END---\n""")
-encrypted_log = []
-while True:
-    try:
-        line = input()
-    except EOFError:
-        break
-    encrypted_log.append(line)
-encrypted_log_str = ''.join(encrypted_log)
-clear = lambda: os.system('cls')  # on Windows System
-# clear = lambda: os.system('clear')  # on Linux System
-clear()
-print('messages received\n')
-passphrase = getpass.getpass(prompt='\nEnter your private key passphrase:\n')
-print('Your decrypted log/message:\n', decrypt_many(encrypted_log_str, private_key, passphrase))
-erase = input('Clear the console output? (y / n)')
+# save decrypted log:
+new_filename = ".".join(encrypted_log_filename.split(".")[:-1]) + "_decrypted.txt"
+with open(new_filename, "w") as f:
+    f.write(decrypted_log)
+del decrypted_log
+
+erase = input('Finished! Saved to ' + new_filename + '. \nClear the console output? (y / n)')
 if erase.lower() == 'y':
     clear()
     print('cleared')
