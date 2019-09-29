@@ -46,7 +46,7 @@ import base64
 import hashlib             # for hashing the names of files
 import threading
 import requests
-import pysocks
+import socks
 import socket
 from random import choice, shuffle
 from pywinauto.application import Application
