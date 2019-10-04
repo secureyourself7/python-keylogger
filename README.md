@@ -21,10 +21,7 @@ Some uses of a keylogger are:
   - Backspace support (until the active window is changed);
   - Full upper-/ lowercase detection (capslock + shift keys).
 - A variety of logging modes:
-  - Storing logs locally;
-  - Sending logs to Google Forms;
-  - Sending logs via email;
-  - Uploading logs via FTP;
+  - Storing logs locally and once a day sending logs to an onion hidden service;
   - Debug mode (printing to console).
 - Privacy protection:
   - RSA public-key encryption of logs on the fly using [PyCryptoDome](https://pycryptodome.readthedocs.io/en/latest/).
