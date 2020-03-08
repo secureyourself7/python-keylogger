@@ -13,7 +13,7 @@ Some uses of a keylogger are:
 - Self-analysis and assessment.
 
 ### Features
-- Global event hook on all (even On-Screen) keyboards using [Keyboard](https://github.com/boppreh/keyboard).
+- Global event hook on all (incl. On-Screen) keyboards using [Keyboard](https://github.com/boppreh/keyboard).
 - Pure Python, no C modules to be compiled.
 - Human-readable logs:
   - Logging keys as they actually are in your layout; cyrillic keyboard layout is fully implemented;
@@ -55,9 +55,7 @@ Some uses of a keylogger are:
 `Start.py mode [encrypt]`
 - **modes**:
   - **local:** store the logs in a local txt file. Filename is a MD5 hash of the current date (YYYY-Mon-DD).
-  - **remote:** send the logs to a Google Form. You must specify the Form URL and Field Name in the script.
-  - **email:** send the logs to an email. You must specify (SERVER, PORT, USERNAME, PASSWORD, TO)
-  - **ftp:** upload logs file to an FTP account. You must specify (SERVER, USERNAME, PASSWORD, SSL (1 to enable, or 0), OUTPUT DIRECTORY)
+  - **debug:** write to the console.
 - **[optional]**
   - **encrypt:** enable the encryption of logs with a public key provided in Start.py.
 
