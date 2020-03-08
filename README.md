@@ -13,7 +13,7 @@ Some uses of a keylogger are:
 - Self-analysis and assessment.
 
 ### Features
-- Global event hook on all (incl. On-Screen) keyboards using [Keyboard](https://github.com/boppreh/keyboard).
+- Global event hook on all (incl. On-Screen) keyboards using cross-platform library [Keyboard](https://github.com/boppreh/keyboard).
 - Pure Python, no C modules to be compiled.
 - Human-readable logs:
   - Logging keys as they actually are in your layout; cyrillic keyboard layout is fully implemented;
@@ -31,7 +31,7 @@ Some uses of a keylogger are:
 ### Getting started
 
 #### System requirements
-- MS Windows (tested on 10). TODO: add Linux and macOS support;
+- MS Windows (tested on 10). TODO: test Linux (requires sudo) and macOS support;
 - [Python 3](https://www.python.org/downloads/) (tested on v. 3.7.4).
 
 #### Usage
