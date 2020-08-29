@@ -2,7 +2,7 @@ pysocks
 pycryptodomex
 future==0.17.1
 keyboard==0.13.3
-psutil==5.6.2
+psutil>=5.6.6
 pywin32==224
 pywin32-ctypes==0.2.0
 PIL
