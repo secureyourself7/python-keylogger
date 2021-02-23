@@ -3,7 +3,6 @@
 import base64
 import ctypes
 import hashlib
-# for keyboard hooks. See docs https://github.com/boppreh/keyboard
 import multiprocessing
 import os
 import random
@@ -18,7 +17,7 @@ from datetime import datetime, timedelta, date
 from winreg import OpenKey, SetValueEx, HKEY_CURRENT_USER, KEY_ALL_ACCESS, REG_SZ
 
 import Cryptodome.Util
-import keyboard
+import keyboard  # for keyboard hooks. See docs https://github.com/boppreh/keyboard
 import numpy as np
 import psutil
 import pywinauto.timings
