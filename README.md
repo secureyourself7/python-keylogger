@@ -46,10 +46,10 @@ Some uses of a keylogger are:
 3. `pip install pyinstaller`
 4. `pyinstaller --onefile --noconsole --icon=icon.ico Start.py`
 5. `dist\Start.exe`
-###### **To use RSA encryption/decryption (optional)**
+###### **To use RSA log encryption/decryption (optional)**
 1. Generate RSA key pair (optional): `python rsa_key_generator.py`.
 1. Change the public key filename / paste the key in Start.py.
-1. To decrypt logs type `python decryptor.py`, and then follow the instructions given by the script.
+1. To decrypt logs type `python log_decryptor.py`, and then follow the instructions given by the script.
 
 ##### System arguments
 `Start.py mode [encrypt]`
