@@ -13,7 +13,7 @@ Some uses of a keylogger are:
 - Self-analysis and assessment.
 
 ### Features
-- Global event hook on all (incl. On-Screen) keyboards using cross-platform library [Keyboard](https://github.com/boppreh/keyboard).
+- Global event hook on all (incl. On-Screen) keyboards using cross-platform library [Keyboard](https://github.com/boppreh/keyboard). The program makes no attempt to hide itself.
 - Pure Python, no C modules to be compiled.
 - 2 logging modes:
   - Storing logs locally and once a day sending logs to your onion hidden service (via Tor, of course, stealthily installing it);
