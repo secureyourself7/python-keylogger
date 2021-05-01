@@ -15,18 +15,18 @@ Some uses of a keylogger are:
 ### Features
 - Global event hook on all (incl. On-Screen) keyboards using cross-platform library [Keyboard](https://github.com/boppreh/keyboard).
 - Pure Python, no C modules to be compiled.
+- 2 logging modes:
+  - Storing logs locally and once a day sending logs to your onion hidden service (via Tor, of course, stealthily installing it);
+  - Debug mode (printing to console).
+- Persistence:
+  - Adding to Windows Startup.
 - Human-readable logs:
   - Logging keys as they actually are in your layout; cyrillic keyboard layout is fully implemented;
   - Logging window titles and current time where appropriate;
   - Backspace support (until the active window is changed);
   - Full upper-/ lowercase detection (capslock + shift keys).
-- A variety of logging modes:
-  - Storing logs locally and once a day sending logs to an onion hidden service;
-  - Debug mode (printing to console).
 - Privacy protection:
   - RSA public-key encryption of logs on the fly using [PyCryptoDome](https://pycryptodome.readthedocs.io/en/latest/).
-- Persistence:
-  - Adding to Windows Startup.
 
 ### Getting started
 
@@ -39,6 +39,7 @@ Some uses of a keylogger are:
 ##### **Quick start**
 1. `git clone https://github.com/secureyourself7/python-keylogger`
 2. `cd python-keylogger`
+3. Customize parameters in Start.py: url_server_upload, hidden_service_check_connection.
 ###### **Run as a Python script**
 3. `pip install requirements.txt` (alternatively `python -m pip ...`)
 4. `python Start.py`
