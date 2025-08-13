@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import os                  # for handling paths
-import sys                 # for getting sys.argv and reading multiple line user input
 import time
 import tkinter as tk
 from tkinter.filedialog import askopenfilename
