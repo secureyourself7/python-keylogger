@@ -82,7 +82,7 @@ with open(encrypted_log_filename, "rb") as f:
 
 # save decrypted log:
 new_filename = ".".join(encrypted_log_filename.split(".")[:-1]) + "_decrypted.txt"
-with open(new_filename, "w") as f:
+with open(new_filename, "w", encoding='utf-8') as f:
     f.write(decrypted_log)
 del decrypted_log
 
